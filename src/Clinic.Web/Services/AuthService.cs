@@ -118,7 +118,13 @@ public class AuthService : IAuthService
         try
         {
             var payload = ParseJwtPayload(token);
-            // Try nameid or sub claim
+            // 1. Check the explicit PatientId claim issued by AuthController
+            if (payload.TryGetValue("PatientId", out var patientIdClaim) && Guid.TryParse(patientIdClaim.GetString(), out var patientGuid))
+                return patientGuid;
+            if (payload.TryGetValue("patientId", out var patientIdLower) && Guid.TryParse(patientIdLower.GetString(), out var patientGuidLower))
+                return patientGuidLower;
+
+            // 2. Fallback to nameid or sub claim
             if (payload.TryGetValue("nameid", out var nameid) && Guid.TryParse(nameid.GetString(), out var guid1))
                 return guid1;
             if (payload.TryGetValue("sub", out var sub) && Guid.TryParse(sub.GetString(), out var guid2))

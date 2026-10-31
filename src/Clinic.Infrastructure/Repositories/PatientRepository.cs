@@ -17,7 +17,39 @@ public class PatientRepository : BaseRepository<Patient>, IPatientRepository
 
     /// <inheritdoc/>
     public override async Task<Patient?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await DbSet.FindAsync(new object[] { id }, ct);
+    {
+        var patient = await DbSet.FindAsync(new object[] { id }, ct);
+        if (patient is not null)
+        {
+            return patient;
+        }
+
+        // Fallback: if the caller passed the ASP.NET Identity ApplicationUser.Id (JWT 'sub' claim)
+        // instead of the PatientId claim, resolve the linked Patient automatically.
+        var userIdStr = id.ToString();
+        var user = await Context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userIdStr, ct);
+
+        if (user is not null)
+        {
+            if (user.PatientId.HasValue)
+            {
+                patient = await DbSet.FindAsync(new object[] { user.PatientId.Value }, ct);
+                if (patient is not null)
+                {
+                    return patient;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                return await DbSet.FirstOrDefaultAsync(p => p.Email == user.Email, ct);
+            }
+        }
+
+        return null;
+    }
 
     /// <inheritdoc/>
     public async Task<Patient?> GetByEmailAsync(string email, CancellationToken ct = default)

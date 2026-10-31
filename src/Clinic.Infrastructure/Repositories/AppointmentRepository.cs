@@ -16,6 +16,26 @@ public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRe
     /// <param name="context">The application database context.</param>
     public AppointmentRepository(ApplicationDbContext context) : base(context) { }
 
+    private async Task<Guid> ResolvePatientIdAsync(Guid patientOrUserId, CancellationToken ct)
+    {
+        if (await Context.Patients.AnyAsync(p => p.Id == patientOrUserId, ct))
+        {
+            return patientOrUserId;
+        }
+
+        var userIdStr = patientOrUserId.ToString();
+        var user = await Context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userIdStr, ct);
+
+        if (user?.PatientId is Guid linkedPatientId)
+        {
+            return linkedPatientId;
+        }
+
+        return patientOrUserId;
+    }
+
     /// <inheritdoc/>
     public override async Task<Appointment?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await DbSet
@@ -34,20 +54,26 @@ public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRe
 
     /// <inheritdoc/>
     public async Task<bool> HasPatientBookingOnSlotAsync(Guid patientId, Guid timeSlotId, CancellationToken ct = default)
-        => await DbSet.AnyAsync(
-            a => a.PatientId == patientId
+    {
+        var resolvedPatientId = await ResolvePatientIdAsync(patientId, ct);
+        return await DbSet.AnyAsync(
+            a => a.PatientId == resolvedPatientId
               && a.TimeSlotId == timeSlotId
               && a.Status != AppointmentStatus.Cancelled,
             ct);
+    }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<Appointment>> GetByPatientIdAsync(Guid patientId, CancellationToken ct = default)
-        => await DbSet
-            .Where(a => a.PatientId == patientId)
+    {
+        var resolvedPatientId = await ResolvePatientIdAsync(patientId, ct);
+        return await DbSet
+            .Where(a => a.PatientId == resolvedPatientId)
             .Include(a => a.Patient)
             .Include(a => a.Clinic)
             .Include(a => a.TimeSlot)
             .ToListAsync(ct);
+    }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<Appointment>> GetByClinicIdAsync(Guid clinicId, CancellationToken ct = default)

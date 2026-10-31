@@ -56,7 +56,7 @@ public class BookAppointmentCommandHandler : IRequestHandler<BookAppointmentComm
         slot.Reserve();
 
         var appointment = Appointment.Create(
-            request.PatientId,
+            patient.Id,
             slot.ClinicId,
             request.TimeSlotId,
             request.Reason);
