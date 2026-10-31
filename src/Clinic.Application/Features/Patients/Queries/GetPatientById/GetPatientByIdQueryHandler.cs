@@ -3,14 +3,12 @@ namespace Clinic.Application.Features.Patients.Queries.GetPatientById;
 using AutoMapper;
 using Clinic.Application.Common.Interfaces;
 using Clinic.Application.DTOs;
-using Clinic.Domain.Entities;
-using Clinic.Domain.Exceptions;
 using MediatR;
 
 /// <summary>
 /// Handles <see cref="GetPatientByIdQuery"/>.
 /// </summary>
-public class GetPatientByIdQueryHandler : IRequestHandler<GetPatientByIdQuery, PatientDto>
+public class GetPatientByIdQueryHandler : IRequestHandler<GetPatientByIdQuery, PatientDto?>
 {
     private readonly IPatientRepository _patientRepository;
     private readonly IMapper _mapper;
@@ -23,10 +21,13 @@ public class GetPatientByIdQueryHandler : IRequestHandler<GetPatientByIdQuery, P
     }
 
     /// <inheritdoc/>
-    public async Task<PatientDto> Handle(GetPatientByIdQuery request, CancellationToken cancellationToken)
+    public async Task<PatientDto?> Handle(GetPatientByIdQuery request, CancellationToken cancellationToken)
     {
-        var patient = await _patientRepository.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new NotFoundException(nameof(Patient), request.Id);
+        var patient = await _patientRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (patient is null)
+        {
+            return null;
+        }
 
         return _mapper.Map<PatientDto>(patient);
     }

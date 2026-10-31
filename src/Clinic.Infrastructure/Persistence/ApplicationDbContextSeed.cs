@@ -7,11 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
-/// Seeds initial PHCIS roles, sample clinics, and upcoming time slots when the database is empty.
+/// Seeds initial PHCIS roles, uMkhanyakude District clinics, and upcoming time slots when the database is empty.
 /// </summary>
 public static class ApplicationDbContextSeed
 {
-    /// <summary>Applies pending migrations or creates schema and seeds initial PHCIS reference data.</summary>
+    /// <summary>Applies pending migrations and seeds initial uMkhanyakude District PHCIS reference data.</summary>
     public static async Task SeedAsync(
         ApplicationDbContext context,
         RoleManager<IdentityRole> roleManager,
@@ -35,27 +35,75 @@ public static class ApplicationDbContextSeed
                 var clinics = new[]
                 {
                     global::Clinic.Domain.Entities.Clinic.Create(
-                        "Khayelitsha Site B Community Health Centre",
-                        "Lwandle Rd, Site B, Khayelitsha, Cape Town, 7784",
-                        "+27 21 360 5200",
-                        "khayelitsha.chc@phcis.gov.za",
+                        "Jozini Clinic",
+                        "Main Road, Jozini, uMkhanyakude District, KwaZulu-Natal, 3969",
+                        "+27 35 572 1042",
+                        "jozini.clinic@kznhealth.gov.za",
+                        new TimeSpan(7, 30, 0),
+                        new TimeSpan(16, 0, 0),
+                        30),
+                    global::Clinic.Domain.Entities.Clinic.Create(
+                        "Msiyane CHC",
+                        "Msiyane Area, Mkuze, uMkhanyakude District, KwaZulu-Natal, 3965",
+                        "+27 35 573 1180",
+                        "msiyane.chc@kznhealth.gov.za",
+                        new TimeSpan(7, 0, 0),
+                        new TimeSpan(16, 30, 0),
+                        30),
+                    global::Clinic.Domain.Entities.Clinic.Create(
+                        "Ophondeni Clinic",
+                        "Ophondweni Road, Mtubatuba, uMkhanyakude District, KwaZulu-Natal, 3935",
+                        "+27 35 550 1420",
+                        "ophondeni.clinic@kznhealth.gov.za",
                         new TimeSpan(8, 0, 0),
                         new TimeSpan(16, 0, 0),
                         30),
                     global::Clinic.Domain.Entities.Clinic.Create(
-                        "Mitchells Plain Community Health Centre",
-                        "AZ Berman Dr, Mitchells Plain, Cape Town, 7785",
-                        "+27 21 391 5820",
-                        "mitchellsplain.chc@phcis.gov.za",
+                        "Shemula Clinic",
+                        "Shemula Reserve, Ingwavuma, uMkhanyakude District, KwaZulu-Natal, 3968",
+                        "+27 35 591 0815",
+                        "shemula.clinic@kznhealth.gov.za",
                         new TimeSpan(8, 0, 0),
-                        new TimeSpan(16, 30, 0),
+                        new TimeSpan(16, 0, 0),
                         30),
                     global::Clinic.Domain.Entities.Clinic.Create(
-                        "Gugulethu Community Day Centre",
-                        "NY 3, Gugulethu, Cape Town, 7750",
-                        "+27 21 637 1280",
-                        "gugulethu.cdc@phcis.gov.za",
+                        "KwaMbuzi Clinic",
+                        "KwaMbuzi Area, Jozini, uMkhanyakude District, KwaZulu-Natal, 3969",
+                        "+27 35 572 1390",
+                        "kwambuzi.clinic@kznhealth.gov.za",
+                        new TimeSpan(8, 0, 0),
+                        new TimeSpan(16, 0, 0),
+                        30),
+                    global::Clinic.Domain.Entities.Clinic.Create(
+                        "Ndumo Clinic",
+                        "Ndumo Reserve, Jozini, uMkhanyakude District, KwaZulu-Natal, 3972",
+                        "+27 35 591 0612",
+                        "ndumo.clinic@kznhealth.gov.za",
                         new TimeSpan(7, 30, 0),
+                        new TimeSpan(16, 0, 0),
+                        30),
+                    global::Clinic.Domain.Entities.Clinic.Create(
+                        "Mahlabeni Clinic",
+                        "Mahlabeni Area, Mtubatuba, uMkhanyakude District, KwaZulu-Natal, 3935",
+                        "+27 35 550 1834",
+                        "mahlabeni.clinic@kznhealth.gov.za",
+                        new TimeSpan(8, 0, 0),
+                        new TimeSpan(16, 0, 0),
+                        30),
+                    global::Clinic.Domain.Entities.Clinic.Create(
+                        "Manyise Clinic",
+                        "Manyiseni Area, Ingwavuma, uMkhanyakude District, KwaZulu-Natal, 3968",
+                        "+27 35 591 0940",
+                        "manyise.clinic@kznhealth.gov.za",
+                        new TimeSpan(8, 0, 0),
+                        new TimeSpan(16, 0, 0),
+                        30),
+                    global::Clinic.Domain.Entities.Clinic.Create(
+                        "Enkungwini Clinic",
+                        "Enkungwini Area, Hlabisa, uMkhanyakude District, KwaZulu-Natal, 3937",
+                        "+27 35 838 1125",
+                        "enkungwini.clinic@kznhealth.gov.za",
+                        new TimeSpan(8, 0, 0),
                         new TimeSpan(16, 0, 0),
                         30)
                 };
@@ -81,7 +129,7 @@ public static class ApplicationDbContextSeed
 
                 await context.TimeSlots.AddRangeAsync(slots);
                 await context.SaveChangesAsync();
-                logger.LogInformation("Seeded {ClinicCount} PHCIS clinics and {SlotCount} time slots.", clinics.Length, slots.Count);
+                logger.LogInformation("Seeded {ClinicCount} uMkhanyakude District clinics and {SlotCount} time slots.", clinics.Length, slots.Count);
             }
         }
         catch (Exception ex)
