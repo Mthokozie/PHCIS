@@ -6,18 +6,43 @@
 
 <PageTitle>My Appointments - PHCIS Clinic Booking</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-    <div class="d-flex justify-space-between align-center mb-6">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="phcis-page-container">
+    <div class="phcis-toolbar mb-6">
         <div>
             <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight:700;">My Appointments</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">View and manage your scheduled clinic visits</MudText>
         </div>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Add"
-                   OnClick="@(() => Navigation.NavigateTo("/book"))">
-            Book New Appointment
-        </MudButton>
+        <div class="phcis-toolbar-controls">
+            <MudTextField @bind-Value="_searchQuery"
+                          Placeholder="Search clinic, code, status..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Immediate="true"
+                          Class="phcis-search-input" />
+
+            <MudSelect T="int"
+                       Label="Show per page"
+                       Value="_pagination.ItemsPerPage"
+                       ValueChanged="OnPageSizeChangedAsync"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Class="phcis-pagesize-select">
+                <MudSelectItem Value="3">3 per page</MudSelectItem>
+                <MudSelectItem Value="5">5 per page</MudSelectItem>
+                <MudSelectItem Value="10">10 per page</MudSelectItem>
+                <MudSelectItem Value="20">20 per page</MudSelectItem>
+                <MudSelectItem Value="50">50 per page</MudSelectItem>
+            </MudSelect>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => Navigation.NavigateTo("/book"))">
+                Book New Appointment
+            </MudButton>
+        </div>
     </div>
 
     @if (_loading)
@@ -32,57 +57,63 @@
     }
     else
     {
-        <MudTable Items="_appointments" Hover="true" Elevation="3" Breakpoint="Breakpoint.Sm">
-            <HeaderContent>
-                <MudTh>Confirmation Code</MudTh>
-                <MudTh>Clinic</MudTh>
-                <MudTh>Date</MudTh>
-                <MudTh>Time</MudTh>
-                <MudTh>Reason</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Confirmation Code">
-                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.ConfirmationCode</MudChip>
-                </MudTd>
-                <MudTd DataLabel="Clinic">@context.ClinicName</MudTd>
-                <MudTd DataLabel="Date">@context.SlotStartTime.ToString("dd MMM yyyy")</MudTd>
-                <MudTd DataLabel="Time">@context.SlotStartTime.ToString("HH:mm") - @context.SlotEndTime.ToString("HH:mm")</MudTd>
-                <MudTd DataLabel="Reason">@context.Reason</MudTd>
-                <MudTd DataLabel="Status">
-                    <MudChip T="string"
-                             Color="@GetStatusColor(context.Status)"
-                             Size="Size.Small">
-                        @context.Status
-                    </MudChip>
-                </MudTd>
-                <MudTd DataLabel="Actions">
-                    @if (context.Status != "Cancelled" && context.Status != "Completed")
-                    {
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Error"
-                                   Size="Size.Small"
-                                   OnClick="@(() => CancelAppointmentAsync(context.Id))">
-                            Cancel
-                        </MudButton>
-                    }
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudCard Elevation="3" Class="pa-4" Style="border-radius: 12px;">
+            <div class="phcis-quickgrid-wrapper">
+                <Microsoft.AspNetCore.Components.QuickGrid.QuickGrid Items="@FilteredAppointments" Pagination="@_pagination">
+                    <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Confirmation Code" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<AppointmentDto>.ByAscending(a => a.ConfirmationCode))">
+                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.ConfirmationCode</MudChip>
+                    </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.ClinicName)" Title="Clinic" Sortable="true" />
+                    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.SlotStartTime)" Format="dd MMM yyyy" Title="Date" Sortable="true" />
+                    <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Time">
+                        <span>@context.SlotStartTime.ToString("HH:mm") – @context.SlotEndTime.ToString("HH:mm")</span>
+                    </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.Reason)" Title="Reason" />
+                    <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Status" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<AppointmentDto>.ByAscending(a => a.Status))">
+                        <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">
+                            @context.Status
+                        </MudChip>
+                    </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                    <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Actions">
+                        @if (context.Status != "Cancelled" && context.Status != "Completed")
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => CancelAppointmentAsync(context.Id))">
+                                Cancel
+                            </MudButton>
+                        }
+                    </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                </Microsoft.AspNetCore.Components.QuickGrid.QuickGrid>
+            </div>
+
+            <Microsoft.AspNetCore.Components.QuickGrid.Paginator State="@_pagination" />
+        </MudCard>
     }
 </MudContainer>
 
 @code {
     private List<AppointmentDto> _appointments = new();
     private bool _loading = true;
+    private string _searchQuery = string.Empty;
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _pagination = new() { ItemsPerPage = 5 };
+
+    private IQueryable<AppointmentDto> FilteredAppointments =>
+        _appointments
+            .Where(a => string.IsNullOrWhiteSpace(_searchQuery)
+                || a.ClinicName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)
+                || a.ConfirmationCode.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)
+                || a.Status.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)
+                || a.Reason.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+            .AsQueryable();
 
     protected override async Task OnInitializedAsync()
     {
         var patientId = await AuthService.GetPatientIdAsync();
         if (!patientId.HasValue || patientId.Value == Guid.Empty)
         {
-            Navigation.NavigateTo("/login");
+            Navigation.NavigateTo("/login", replace: true);
             return;
         }
 
@@ -94,6 +125,12 @@
         _loading = true;
         _appointments = await AppointmentService.GetPatientAppointmentsAsync(patientId);
         _loading = false;
+    }
+
+    private async Task OnPageSizeChangedAsync(int newSize)
+    {
+        _pagination.ItemsPerPage = newSize;
+        await _pagination.SetCurrentPageIndexAsync(0);
     }
 
     private async Task CancelAppointmentAsync(Guid appointmentId)

@@ -7,10 +7,10 @@
 
 <PageTitle>Dashboard - PHCIS Clinic Booking</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-    <MudPaper Elevation="2" Class="pa-5 mb-6 d-flex align-center justify-space-between flex-wrap gap-4" Style="border-radius: 12px;">
-        <div class="d-flex align-center gap-4">
-            <MudAvatar Style="height:72px; width:72px; font-size:1.75rem;" Color="Color.Primary">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="phcis-page-container">
+    <MudPaper Elevation="2" Class="phcis-card mb-6 d-flex align-center justify-space-between flex-wrap gap-4">
+        <div class="d-flex align-center flex-wrap gap-4">
+            <MudAvatar Style="height:64px; width:64px; font-size:1.5rem;" Color="Color.Primary">
                 @if (!string.IsNullOrEmpty(_patient?.ProfileImageUrl))
                 {
                     <MudImage Src="@_patient.ProfileImageUrl" Alt="Patient Avatar" Style="width:100%;height:100%;object-fit:cover;" />
@@ -39,7 +39,7 @@
 
     <MudGrid Class="mb-6">
         <MudItem xs="12" sm="4">
-            <MudPaper Elevation="3" Class="pa-5 d-flex align-center justify-space-between" Style="border-radius: 12px;">
+            <MudPaper Elevation="3" Class="phcis-card d-flex align-center justify-space-between">
                 <div>
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Active Bookings</MudText>
                     <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight:700;">
@@ -50,7 +50,7 @@
             </MudPaper>
         </MudItem>
         <MudItem xs="12" sm="4">
-            <MudPaper Elevation="3" Class="pa-5 d-flex align-center justify-space-between" Style="border-radius: 12px;">
+            <MudPaper Elevation="3" Class="phcis-card d-flex align-center justify-space-between">
                 <div>
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Appointments</MudText>
                     <MudText Typo="Typo.h4" Color="Color.Info" Style="font-weight:700;">@_appointments.Count</MudText>
@@ -59,7 +59,7 @@
             </MudPaper>
         </MudItem>
         <MudItem xs="12" sm="4">
-            <MudPaper Elevation="3" Class="pa-5 d-flex align-center justify-space-between" Style="border-radius: 12px;">
+            <MudPaper Elevation="3" Class="phcis-card d-flex align-center justify-space-between">
                 <div>
                     <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Available Clinics</MudText>
                     <MudText Typo="Typo.h4" Color="Color.Success" Style="font-weight:700;">@_clinics.Count</MudText>
@@ -69,12 +69,34 @@
         </MudItem>
     </MudGrid>
 
-    <MudCard Elevation="3" Class="pa-6" Style="border-radius: 12px;">
-        <div class="d-flex justify-space-between align-center mb-4">
-            <MudText Typo="Typo.h6" Style="font-weight:600;">Upcoming Appointments</MudText>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/book"))">
-                New Booking
-            </MudButton>
+    <!-- Bookings QuickGrid Card -->
+    <MudCard Elevation="3" Class="phcis-card mb-6">
+        <div class="phcis-toolbar">
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:600;">My Bookings</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">QuickGrid view of your scheduled appointments</MudText>
+            </div>
+            <div class="phcis-toolbar-controls">
+                <MudSelect T="int"
+                           Label="Show per page"
+                           Value="_bookingPagination.ItemsPerPage"
+                           ValueChanged="OnBookingPageSizeChangedAsync"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Class="phcis-pagesize-select">
+                    <MudSelectItem Value="3">3 per page</MudSelectItem>
+                    <MudSelectItem Value="5">5 per page</MudSelectItem>
+                    <MudSelectItem Value="10">10 per page</MudSelectItem>
+                    <MudSelectItem Value="20">20 per page</MudSelectItem>
+                </MudSelect>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="@(() => Navigation.NavigateTo("/book"))">
+                    New Booking
+                </MudButton>
+            </div>
         </div>
 
         @if (_appointments.Count == 0)
@@ -83,28 +105,76 @@
         }
         else
         {
-            <MudSimpleTable Hover="true">
-                <thead>
-                    <tr>
-                        <th>Confirmation Code</th>
-                        <th>Clinic</th>
-                        <th>Date & Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var appt in _appointments.Take(5))
-                    {
-                        <tr>
-                            <td><strong>@appt.ConfirmationCode</strong></td>
-                            <td>@appt.ClinicName</td>
-                            <td>@appt.SlotStartTime.ToString("dd MMM yyyy HH:mm")</td>
-                            <td>@appt.Status</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
+            <div class="phcis-quickgrid-wrapper">
+                <Microsoft.AspNetCore.Components.QuickGrid.QuickGrid Items="@_appointments.AsQueryable()" Pagination="@_bookingPagination">
+                    <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Confirmation Code" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<AppointmentDto>.ByAscending(a => a.ConfirmationCode))">
+                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.ConfirmationCode</MudChip>
+                    </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.ClinicName)" Title="Clinic" Sortable="true" />
+                    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.SlotStartTime)" Format="dd MMM yyyy HH:mm" Title="Date & Time" Sortable="true" />
+                    <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.Reason)" Title="Reason" />
+                    <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Status" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<AppointmentDto>.ByAscending(a => a.Status))">
+                        <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small">@context.Status</MudChip>
+                    </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                </Microsoft.AspNetCore.Components.QuickGrid.QuickGrid>
+            </div>
+
+            <Microsoft.AspNetCore.Components.QuickGrid.Paginator State="@_bookingPagination" />
         }
+    </MudCard>
+
+    <!-- Clinics QuickGrid Card -->
+    <MudCard Elevation="3" Class="phcis-card">
+        <div class="phcis-toolbar">
+            <div>
+                <MudText Typo="Typo.h6" Style="font-weight:600;">uMkhanyakude District Clinics</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Select a clinic below to book an appointment</MudText>
+            </div>
+            <div class="phcis-toolbar-controls">
+                <MudTextField @bind-Value="_clinicSearch"
+                              Placeholder="Filter clinics..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Immediate="true"
+                              Class="phcis-search-input" />
+
+                <MudSelect T="int"
+                           Label="Show per page"
+                           Value="_clinicPagination.ItemsPerPage"
+                           ValueChanged="OnClinicPageSizeChangedAsync"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Class="phcis-pagesize-select">
+                    <MudSelectItem Value="3">3 per page</MudSelectItem>
+                    <MudSelectItem Value="5">5 per page</MudSelectItem>
+                    <MudSelectItem Value="10">10 per page</MudSelectItem>
+                    <MudSelectItem Value="20">20 per page</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+
+        <div class="phcis-quickgrid-wrapper">
+            <Microsoft.AspNetCore.Components.QuickGrid.QuickGrid Items="@FilteredClinics" Pagination="@_clinicPagination">
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Name)" Title="Clinic Name" Sortable="true" />
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Address)" Title="Address" Sortable="true" />
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Hours">
+                    <span>@context.OpeningTime – @context.ClosingTime</span>
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Phone)" Title="Phone" />
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Book">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="@(() => Navigation.NavigateTo($"/book?ClinicId={context.Id}"))">
+                        Book Slot
+                    </MudButton>
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+            </Microsoft.AspNetCore.Components.QuickGrid.QuickGrid>
+        </div>
+
+        <Microsoft.AspNetCore.Components.QuickGrid.Paginator State="@_clinicPagination" />
     </MudCard>
 </MudContainer>
 
@@ -112,9 +182,26 @@
     private List<AppointmentDto> _appointments = new();
     private List<ClinicDto> _clinics = new();
     private PatientDto? _patient;
+    private string _clinicSearch = string.Empty;
+
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _bookingPagination = new() { ItemsPerPage = 5 };
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _clinicPagination = new() { ItemsPerPage = 5 };
+
+    private IQueryable<ClinicDto> FilteredClinics =>
+        _clinics
+            .Where(c => string.IsNullOrWhiteSpace(_clinicSearch)
+                || c.Name.Contains(_clinicSearch, StringComparison.OrdinalIgnoreCase)
+                || c.Address.Contains(_clinicSearch, StringComparison.OrdinalIgnoreCase))
+            .AsQueryable();
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AuthService.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/login", replace: true);
+            return;
+        }
+
         _clinics = await ClinicService.GetAllClinicsAsync();
         var patientId = await AuthService.GetPatientIdAsync();
         if (patientId.HasValue && patientId.Value != Guid.Empty)
@@ -123,4 +210,25 @@
             _appointments = await AppointmentService.GetPatientAppointmentsAsync(patientId.Value);
         }
     }
+
+    private async Task OnBookingPageSizeChangedAsync(int newSize)
+    {
+        _bookingPagination.ItemsPerPage = newSize;
+        await _bookingPagination.SetCurrentPageIndexAsync(0);
+    }
+
+    private async Task OnClinicPageSizeChangedAsync(int newSize)
+    {
+        _clinicPagination.ItemsPerPage = newSize;
+        await _clinicPagination.SetCurrentPageIndexAsync(0);
+    }
+
+    private static Color GetStatusColor(string status) => status switch
+    {
+        "Confirmed" => Color.Success,
+        "Pending" => Color.Warning,
+        "Cancelled" => Color.Error,
+        "Completed" => Color.Info,
+        _ => Color.Default
+    };
 }

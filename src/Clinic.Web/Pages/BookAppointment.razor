@@ -8,10 +8,10 @@
 
 <PageTitle>Book Appointment - PHCIS Clinic Booking</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8 mb-8">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="phcis-page-container">
     <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-2" Style="font-weight:700;">Book a Clinic Appointment</MudText>
     <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-        Select your preferred PHCIS clinic, date, and available time slot below.
+        Select your preferred uMkhanyakude District clinic, date, and available time slot below.
     </MudText>
 
     @if (_confirmation is not null)
@@ -20,22 +20,60 @@
     }
     else
     {
-        <MudCard Elevation="3" Class="pa-6" Style="border-radius: 12px;">
+        <MudCard Elevation="3" Class="phcis-card">
             <MudGrid>
-                <!-- Step 1: Select Clinic -->
-                <MudItem xs="12" md="6">
-                    <MudSelect T="Guid"
-                               Label="1. Select Healthcare Clinic"
-                               Value="_selectedClinicId"
-                               ValueChanged="OnClinicChangedAsync"
-                               Variant="Variant.Outlined"
-                               Required="true">
-                        <MudSelectItem Value="@Guid.Empty" Disabled="true">-- Choose a Clinic --</MudSelectItem>
-                        @foreach (var clinic in _clinics)
-                        {
-                            <MudSelectItem Value="@clinic.Id">@clinic.Name (@clinic.OpeningTime - @clinic.ClosingTime)</MudSelectItem>
-                        }
-                    </MudSelect>
+                <!-- Step 1: Select Clinic (QuickGrid with Pagination & Page Size Selector) -->
+                <MudItem xs="12">
+                    <div class="phcis-toolbar">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">1. Select Healthcare Clinic</MudText>
+                        <div class="phcis-toolbar-controls">
+                            <MudTextField @bind-Value="_clinicSearch"
+                                          Placeholder="Search clinic..."
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Immediate="true"
+                                          Class="phcis-search-input" />
+
+                            <MudSelect T="int"
+                                       Label="Clinics per page"
+                                       Value="_clinicPagination.ItemsPerPage"
+                                       ValueChanged="OnClinicPageSizeChangedAsync"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Class="phcis-pagesize-select">
+                                <MudSelectItem Value="3">3 per page</MudSelectItem>
+                                <MudSelectItem Value="5">5 per page</MudSelectItem>
+                                <MudSelectItem Value="10">10 per page</MudSelectItem>
+                                <MudSelectItem Value="20">20 per page</MudSelectItem>
+                            </MudSelect>
+                        </div>
+                    </div>
+
+                    <div class="phcis-quickgrid-wrapper">
+                        <Microsoft.AspNetCore.Components.QuickGrid.QuickGrid Items="@FilteredClinics" Pagination="@_clinicPagination">
+                            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Name)" Title="Clinic Name" Sortable="true" />
+                            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Address)" Title="Address / Area" Sortable="true" />
+                            <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Operating Hours">
+                                <span>@context.OpeningTime – @context.ClosingTime</span>
+                            </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                            <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Phone)" Title="Phone" />
+                            <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Select">
+                                @{
+                                    var isSelectedClinic = _selectedClinicId == context.Id;
+                                }
+                                <MudButton Variant="@(isSelectedClinic ? Variant.Filled : Variant.Outlined)"
+                                           Color="@(isSelectedClinic ? Color.Primary : Color.Default)"
+                                           Size="Size.Small"
+                                           StartIcon="@(isSelectedClinic ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.RadioButtonUnchecked)"
+                                           OnClick="@(() => OnClinicChangedAsync(context.Id))">
+                                    @(isSelectedClinic ? "Selected" : "Choose")
+                                </MudButton>
+                            </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                        </Microsoft.AspNetCore.Components.QuickGrid.QuickGrid>
+                    </div>
+                    <Microsoft.AspNetCore.Components.QuickGrid.Paginator State="@_clinicPagination" />
                 </MudItem>
 
                 <!-- Step 2: Select Date -->
@@ -47,9 +85,39 @@
                                    Variant="Variant.Outlined" />
                 </MudItem>
 
-                <!-- Step 3: Select Available Time Slot -->
+                <MudItem xs="12" md="6" Class="d-flex align-center">
+                    @if (_selectedClinicId != Guid.Empty)
+                    {
+                        var selectedClinic = _clinics.FirstOrDefault(c => c.Id == _selectedClinicId);
+                        if (selectedClinic is not null)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true" Class="w-100">
+                                Booking at: <strong>@selectedClinic.Name</strong> (@(_selectedDate?.ToString("dd MMM yyyy")))
+                            </MudAlert>
+                        }
+                    }
+                </MudItem>
+
+                <!-- Step 3: Select Available Time Slot (QuickGrid with Pagination & Page Size Selector) -->
                 <MudItem xs="12">
-                    <MudText Typo="Typo.subtitle1" Class="mb-2" Style="font-weight:600;">3. Available Time Slots</MudText>
+                    <div class="phcis-toolbar mb-2">
+                        <MudText Typo="Typo.subtitle1" Style="font-weight:600;">3. Available Time Slots</MudText>
+                        <div class="phcis-toolbar-controls">
+                            <MudSelect T="int"
+                                       Label="Slots per page"
+                                       Value="_slotPagination.ItemsPerPage"
+                                       ValueChanged="OnSlotPageSizeChangedAsync"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Class="phcis-pagesize-select">
+                                <MudSelectItem Value="5">5 per page</MudSelectItem>
+                                <MudSelectItem Value="8">8 per page</MudSelectItem>
+                                <MudSelectItem Value="16">16 per page</MudSelectItem>
+                                <MudSelectItem Value="32">32 per page</MudSelectItem>
+                            </MudSelect>
+                        </div>
+                    </div>
+
                     @if (_loadingSlots)
                     {
                         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
@@ -64,27 +132,35 @@
                     }
                     else
                     {
-                        <MudGrid>
-                            @foreach (var slot in _availableSlots)
-                            {
-                                var isSelected = _selectedSlotId == slot.Id;
-                                <MudItem xs="6" sm="4" md="3">
-                                    <MudButton Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
-                                               Color="@(isSelected ? Color.Primary : Color.Default)"
-                                               FullWidth="true"
-                                               Disabled="@(!slot.IsAvailable || slot.RemainingCapacity <= 0)"
-                                               OnClick="@(() => _selectedSlotId = slot.Id)"
-                                               Class="py-3 d-flex flex-column">
-                                        <MudText Typo="Typo.body1" Style="font-weight:600;">
-                                            @slot.StartTime.ToString("HH:mm") - @slot.EndTime.ToString("HH:mm")
-                                        </MudText>
-                                        <MudText Typo="Typo.caption">
-                                            @slot.RemainingCapacity spots left
-                                        </MudText>
+                        <div class="phcis-quickgrid-wrapper">
+                            <Microsoft.AspNetCore.Components.QuickGrid.QuickGrid Items="@_availableSlots.AsQueryable()" Pagination="@_slotPagination">
+                                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Time Slot" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<TimeSlotDto>.ByAscending(s => s.StartTime))">
+                                    <strong>@context.StartTime.ToString("HH:mm") – @context.EndTime.ToString("HH:mm")</strong>
+                                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(s => s.StartTime)" Format="dd MMM yyyy" Title="Date" Sortable="true" />
+                                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Remaining Spots" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<TimeSlotDto>.ByDescending(s => s.RemainingCapacity))">
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@(context.RemainingCapacity > 2 ? Color.Success : Color.Warning)">
+                                        @context.RemainingCapacity spots left
+                                    </MudChip>
+                                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Select Slot">
+                                    @{
+                                        var isSelectedSlot = _selectedSlotId == context.Id;
+                                    }
+                                    <MudButton Variant="@(isSelectedSlot ? Variant.Filled : Variant.Outlined)"
+                                               Color="@(isSelectedSlot ? Color.Primary : Color.Default)"
+                                               Size="Size.Small"
+                                               Disabled="@(!context.IsAvailable || context.RemainingCapacity <= 0)"
+                                               StartIcon="@(isSelectedSlot ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.AccessTime)"
+                                               OnClick="@(() => _selectedSlotId = context.Id)">
+                                        @(isSelectedSlot ? "Selected" : "Select Time")
                                     </MudButton>
-                                </MudItem>
-                            }
-                        </MudGrid>
+                                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                            </Microsoft.AspNetCore.Components.QuickGrid.QuickGrid>
+                        </div>
+                        <Microsoft.AspNetCore.Components.QuickGrid.Paginator State="@_slotPagination" />
                     }
                 </MudItem>
 
@@ -130,10 +206,21 @@
     private DateTime? _selectedDate = DateTime.Today;
     private Guid _selectedSlotId = Guid.Empty;
     private string _reason = string.Empty;
+    private string _clinicSearch = string.Empty;
     private bool _loadingSlots;
     private bool _isSubmitting;
     private string? _errorMessage;
     private AppointmentConfirmationDto? _confirmation;
+
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _clinicPagination = new() { ItemsPerPage = 5 };
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _slotPagination = new() { ItemsPerPage = 8 };
+
+    private IQueryable<ClinicDto> FilteredClinics =>
+        _clinics
+            .Where(c => string.IsNullOrWhiteSpace(_clinicSearch)
+                || c.Name.Contains(_clinicSearch, StringComparison.OrdinalIgnoreCase)
+                || c.Address.Contains(_clinicSearch, StringComparison.OrdinalIgnoreCase))
+            .AsQueryable();
 
     protected override async Task OnInitializedAsync()
     {
@@ -154,6 +241,18 @@
             _selectedClinicId = _clinics[0].Id;
             await LoadSlotsAsync();
         }
+    }
+
+    private async Task OnClinicPageSizeChangedAsync(int newSize)
+    {
+        _clinicPagination.ItemsPerPage = newSize;
+        await _clinicPagination.SetCurrentPageIndexAsync(0);
+    }
+
+    private async Task OnSlotPageSizeChangedAsync(int newSize)
+    {
+        _slotPagination.ItemsPerPage = newSize;
+        await _slotPagination.SetCurrentPageIndexAsync(0);
     }
 
     private async Task OnClinicChangedAsync(Guid clinicId)
@@ -177,6 +276,7 @@
 
         _loadingSlots = true;
         _availableSlots = await TimeSlotService.GetAvailableSlotsAsync(_selectedClinicId, _selectedDate.Value);
+        await _slotPagination.SetCurrentPageIndexAsync(0);
         _loadingSlots = false;
     }
 
