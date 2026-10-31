@@ -1,0 +1,48 @@
+@inherits LayoutComponentBase
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<MudLayout>
+    <MudAppBar Elevation="2" Color="Color.Primary">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-2" Style="font-weight:700;">PHCIS Clinic Booking</MudText>
+        <MudSpacer />
+        @if (_isAuthenticated)
+        {
+            <MudButton Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/my-appointments"))">My Appointments</MudButton>
+            <MudButton Color="Color.Inherit" Variant="Variant.Outlined" Class="ml-2" OnClick="LogoutAsync">Sign Out</MudButton>
+        }
+        else
+        {
+            <MudButton Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/login"))">Sign In</MudButton>
+            <MudButton Color="Color.Secondary" Variant="Variant.Filled" Class="ml-2" OnClick="@(() => Navigation.NavigateTo("/register"))">Register</MudButton>
+        }
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
+        <NavMenu IsAuthenticated="_isAuthenticated" />
+    </MudDrawer>
+
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        _isAuthenticated = false;
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

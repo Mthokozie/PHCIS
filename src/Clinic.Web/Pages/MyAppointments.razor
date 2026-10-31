@@ -1,0 +1,125 @@
+@page "/my-appointments"
+@inject IAppointmentService AppointmentService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>My Appointments - PHCIS Clinic Booking</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
+    <div class="d-flex justify-space-between align-center mb-6">
+        <div>
+            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight:700;">My Appointments</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">View and manage your scheduled clinic visits</MudText>
+        </div>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => Navigation.NavigateTo("/book"))">
+            Book New Appointment
+        </MudButton>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_appointments.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">
+            You do not have any appointments yet. Click "Book New Appointment" to schedule a visit.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTable Items="_appointments" Hover="true" Elevation="3" Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Confirmation Code</MudTh>
+                <MudTh>Clinic</MudTh>
+                <MudTh>Date</MudTh>
+                <MudTh>Time</MudTh>
+                <MudTh>Reason</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Confirmation Code">
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.ConfirmationCode</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Clinic">@context.ClinicName</MudTd>
+                <MudTd DataLabel="Date">@context.SlotStartTime.ToString("dd MMM yyyy")</MudTd>
+                <MudTd DataLabel="Time">@context.SlotStartTime.ToString("HH:mm") - @context.SlotEndTime.ToString("HH:mm")</MudTd>
+                <MudTd DataLabel="Reason">@context.Reason</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string"
+                             Color="@GetStatusColor(context.Status)"
+                             Size="Size.Small">
+                        @context.Status
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    @if (context.Status != "Cancelled" && context.Status != "Completed")
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="@(() => CancelAppointmentAsync(context.Id))">
+                            Cancel
+                        </MudButton>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<AppointmentDto> _appointments = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patientId = await AuthService.GetPatientIdAsync();
+        if (!patientId.HasValue || patientId.Value == Guid.Empty)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadAppointmentsAsync(patientId.Value);
+    }
+
+    private async Task LoadAppointmentsAsync(Guid patientId)
+    {
+        _loading = true;
+        _appointments = await AppointmentService.GetPatientAppointmentsAsync(patientId);
+        _loading = false;
+    }
+
+    private async Task CancelAppointmentAsync(Guid appointmentId)
+    {
+        var success = await AppointmentService.CancelAppointmentAsync(appointmentId, "Cancelled by patient via portal");
+        if (success)
+        {
+            Snackbar.Add("Appointment cancelled.", Severity.Info);
+            var patientId = await AuthService.GetPatientIdAsync();
+            if (patientId.HasValue)
+            {
+                await LoadAppointmentsAsync(patientId.Value);
+            }
+        }
+        else
+        {
+            Snackbar.Add("Could not cancel appointment.", Severity.Error);
+        }
+    }
+
+    private static Color GetStatusColor(string status) => status switch
+    {
+        "Confirmed" => Color.Success,
+        "Pending" => Color.Warning,
+        "Cancelled" => Color.Error,
+        "Completed" => Color.Info,
+        _ => Color.Default
+    };
+}

@@ -1,0 +1,90 @@
+@page "/register"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Patient Registration - PHCIS Clinic Booking</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8 mb-8">
+    <MudCard Elevation="4" Class="pa-6" Style="border-radius: 12px;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">Patient Registration</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Create your PHCIS patient profile to book appointments</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            }
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.FirstName" Label="First Name" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.LastName" Label="Last Name" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Email" Label="Email Address" Variant="Variant.Outlined" InputType="InputType.Email" Required="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Password" Label="Password (min 6 chars, uppercase, digit, symbol)" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.PhoneNumber" Label="Phone Number" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_model.IdNumber" Label="National ID Number" Variant="Variant.Outlined" Required="true" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudDatePicker Label="Date of Birth" @bind-Date="_dob" Variant="Variant.Outlined" MaxDate="@DateTime.Today.AddDays(-1)" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+        <MudCardActions Class="d-flex flex-column px-4 pb-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@_isSubmitting"
+                       OnClick="HandleRegisterAsync">
+                @(_isSubmitting ? "Registering..." : "Create Account")
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Class="mt-2"
+                       OnClick="@(() => Navigation.NavigateTo("/login"))">
+                Already registered? Sign In
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private readonly RegisterRequest _model = new();
+    private DateTime? _dob = new DateTime(1990, 1, 1);
+    private string? _errorMessage;
+    private bool _isSubmitting;
+
+    private async Task HandleRegisterAsync()
+    {
+        _errorMessage = null;
+        _model.DateOfBirth = _dob ?? new DateTime(1990, 1, 1);
+
+        _isSubmitting = true;
+        var (success, error) = await AuthService.RegisterAsync(_model);
+        if (success)
+        {
+            await AuthService.LoginAsync(new LoginRequest { Email = _model.Email, Password = _model.Password });
+            Snackbar.Add("Account created and signed in!", Severity.Success);
+            Navigation.NavigateTo("/dashboard", forceLoad: true);
+        }
+        else
+        {
+            _errorMessage = error ?? "Registration failed. Please check your details.";
+        }
+        _isSubmitting = false;
+    }
+}

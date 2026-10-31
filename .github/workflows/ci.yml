@@ -1,0 +1,29 @@
+name: PHCIS Clinic Booking CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Clinic.slnx
+
+      - name: Build solution
+        run: dotnet build Clinic.slnx --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test Clinic.slnx --configuration Release --no-build --verbosity normal

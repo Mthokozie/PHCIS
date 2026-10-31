@@ -1,0 +1,17 @@
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Clinic.Web.Shared.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found</PageTitle>
+        <LayoutView Layout="@typeof(Clinic.Web.Shared.MainLayout)">
+            <MudText Typo="Typo.h4" Align="Align.Center" Class="mt-8">Page not found (404)</MudText>
+        </LayoutView>
+    </NotFound>
+</Router>

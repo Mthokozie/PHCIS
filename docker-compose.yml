@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: phcis-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=PhcisStrongPassword!2026
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+  clinic-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: phcis-clinic-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=ClinicBookingDb;User Id=sa;Password=PhcisStrongPassword!2026;TrustServerCertificate=True;
+    ports:
+      - "7001:8080"
+    depends_on:
+      - sqlserver
+
+volumes:
+  sqlserver_data:

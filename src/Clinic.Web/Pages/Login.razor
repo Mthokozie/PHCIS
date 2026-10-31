@@ -1,0 +1,83 @@
+@page "/login"
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Sign In - PHCIS Clinic Booking</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-12">
+    <MudCard Elevation="4" Class="pa-6" Style="border-radius: 12px;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">Sign In to PHCIS</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Access your clinic appointments and bookings</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            }
+
+            <MudTextField @bind-Value="_model.Email"
+                          Label="Email Address"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Required="true"
+                          Class="mb-4" />
+
+            <MudTextField @bind-Value="_model.Password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          Required="true"
+                          Class="mb-4" />
+        </MudCardContent>
+        <MudCardActions Class="d-flex flex-column px-4 pb-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@_isSubmitting"
+                       OnClick="HandleLoginAsync">
+                @(_isSubmitting ? "Signing in..." : "Sign In")
+            </MudButton>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Secondary"
+                       Class="mt-2"
+                       OnClick="@(() => Navigation.NavigateTo("/register"))">
+                Don't have an account? Register here
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private readonly LoginRequest _model = new();
+    private string? _errorMessage;
+    private bool _isSubmitting;
+
+    private async Task HandleLoginAsync()
+    {
+        _errorMessage = null;
+        if (string.IsNullOrWhiteSpace(_model.Email) || string.IsNullOrWhiteSpace(_model.Password))
+        {
+            _errorMessage = "Please enter both email and password.";
+            return;
+        }
+
+        _isSubmitting = true;
+        var (success, error) = await AuthService.LoginAsync(_model);
+        _isSubmitting = false;
+
+        if (success)
+        {
+            Snackbar.Add("Signed in successfully!", Severity.Success);
+            Navigation.NavigateTo("/dashboard", forceLoad: true);
+        }
+        else
+        {
+            _errorMessage = error ?? "Invalid login credentials.";
+        }
+    }
+}

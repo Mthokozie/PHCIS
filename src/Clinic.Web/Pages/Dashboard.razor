@@ -1,0 +1,99 @@
+@page "/dashboard"
+@inject IAppointmentService AppointmentService
+@inject IClinicService ClinicService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard - PHCIS Clinic Booking</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
+    <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-2" Style="font-weight:700;">Patient Dashboard</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+        Overview of your PHCIS healthcare appointments and active clinics.
+    </MudText>
+
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" sm="4">
+            <MudPaper Elevation="3" Class="pa-5 d-flex align-center justify-space-between" Style="border-radius: 12px;">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Active Bookings</MudText>
+                    <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight:700;">
+                        @_appointments.Count(a => a.Status == "Confirmed" || a.Status == "Pending")
+                    </MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Color="Color.Primary" Size="Size.Large" />
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudPaper Elevation="3" Class="pa-5 d-flex align-center justify-space-between" Style="border-radius: 12px;">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Total Appointments</MudText>
+                    <MudText Typo="Typo.h4" Color="Color.Info" Style="font-weight:700;">@_appointments.Count</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Info" Size="Size.Large" />
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="4">
+            <MudPaper Elevation="3" Class="pa-5 d-flex align-center justify-space-between" Style="border-radius: 12px;">
+                <div>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Available Clinics</MudText>
+                    <MudText Typo="Typo.h4" Color="Color.Success" Style="font-weight:700;">@_clinics.Count</MudText>
+                </div>
+                <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Color="Color.Success" Size="Size.Large" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudCard Elevation="3" Class="pa-6" Style="border-radius: 12px;">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h6" Style="font-weight:600;">Upcoming Appointments</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/book"))">
+                New Booking
+            </MudButton>
+        </div>
+
+        @if (_appointments.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">No appointments scheduled yet.</MudAlert>
+        }
+        else
+        {
+            <MudSimpleTable Hover="true">
+                <thead>
+                    <tr>
+                        <th>Confirmation Code</th>
+                        <th>Clinic</th>
+                        <th>Date & Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var appt in _appointments.Take(5))
+                    {
+                        <tr>
+                            <td><strong>@appt.ConfirmationCode</strong></td>
+                            <td>@appt.ClinicName</td>
+                            <td>@appt.SlotStartTime.ToString("dd MMM yyyy HH:mm")</td>
+                            <td>@appt.Status</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </MudCard>
+</MudContainer>
+
+@code {
+    private List<AppointmentDto> _appointments = new();
+    private List<ClinicDto> _clinics = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _clinics = await ClinicService.GetAllClinicsAsync();
+        var patientId = await AuthService.GetPatientIdAsync();
+        if (patientId.HasValue && patientId.Value != Guid.Empty)
+        {
+            _appointments = await AppointmentService.GetPatientAppointmentsAsync(patientId.Value);
+        }
+    }
+}

@@ -1,0 +1,52 @@
+@inject NavigationManager Navigation
+
+<MudCard Elevation="4" Class="pa-6" Style="border-radius: 16px; border-top: 6px solid #2E7D32;">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.h5" Color="Color.Success" Style="font-weight:700;">Appointment Confirmed!</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@Confirmation.Message</MudText>
+                </div>
+            </div>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudPaper Elevation="0" Class="pa-4 mb-4 d-flex flex-column align-center" Style="background:#E8F5E9; border-radius:12px;">
+            <MudText Typo="Typo.overline" Color="Color.Secondary">CONFIRMATION REFERENCE CODE</MudText>
+            <MudText Typo="Typo.h4" Color="Color.Success" Style="font-weight:800; letter-spacing:2px;">
+                @Confirmation.ConfirmationCode
+            </MudText>
+        </MudPaper>
+
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Patient</MudText>
+                <MudText Typo="Typo.body1" Style="font-weight:600;">@Confirmation.PatientName</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Date & Time</MudText>
+                <MudText Typo="Typo.body1" Style="font-weight:600;">
+                    @Confirmation.SlotStartTime.ToString("dd MMM yyyy, HH:mm") - @Confirmation.SlotEndTime.ToString("HH:mm")
+                </MudText>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+    <MudCardActions Class="d-flex justify-end gap-2 px-4 pb-4">
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OnBookAnother">
+            Book Another
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/my-appointments"))">
+            View My Appointments
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public AppointmentConfirmationDto Confirmation { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnBookAnother { get; set; }
+}

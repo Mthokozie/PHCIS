@@ -1,0 +1,17 @@
+<MudNavMenu Class="pt-4">
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+    <MudNavLink Href="/book" Icon="@Icons.Material.Filled.CalendarMonth">Book Appointment</MudNavLink>
+    <MudNavLink Href="/my-appointments" Icon="@Icons.Material.Filled.EventNote">My Appointments</MudNavLink>
+    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    <MudDivider Class="my-2" />
+    @if (!IsAuthenticated)
+    {
+        <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">Sign In</MudNavLink>
+        <MudNavLink Href="/register" Icon="@Icons.Material.Filled.PersonAdd">Register</MudNavLink>
+    }
+</MudNavMenu>
+
+@code {
+    [Parameter]
+    public bool IsAuthenticated { get; set; }
+}

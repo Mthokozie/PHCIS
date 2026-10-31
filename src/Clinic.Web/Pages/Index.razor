@@ -1,0 +1,140 @@
+@page "/"
+@inject IClinicService ClinicService
+@inject NavigationManager Navigation
+
+<PageTitle>PHCIS Clinic Booking - Home</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <!-- Hero Section -->
+    <MudPaper Elevation="0" Class="pa-8 mb-8 mud-theme-primary" Style="background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%); border-radius: 16px;">
+        <MudGrid>
+            <MudItem xs="12" md="8">
+                <MudText Typo="Typo.h3" Style="color:white; font-weight:700;">Welcome to PHCIS Clinic Booking</MudText>
+                <MudText Typo="Typo.h6" Style="color:rgba(255,255,255,0.85);" Class="mt-2 mb-6">
+                    Book appointments at your nearest clinic quickly and conveniently.
+                </MudText>
+                <MudButton Variant="Variant.Filled"
+                           Size="Size.Large"
+                           Style="background:white; color:#1976D2; font-weight:600;"
+                           OnClick="@(() => Navigation.NavigateTo("/book"))">
+                    Book an Appointment
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Size="Size.Large"
+                           Style="color:white; border-color:white;"
+                           Class="ml-3"
+                           OnClick="@(() => Navigation.NavigateTo("/login"))">
+                    Sign In
+                </MudButton>
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex align-center justify-center">
+                <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Style="font-size:8rem; color:rgba(255,255,255,0.3);" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Feature Cards -->
+    <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight:600;">Our Services</MudText>
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="3" Style="border-radius:12px; height:100%;">
+                <MudCardContent Class="text-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Primary" Style="font-size:3rem;" />
+                    <MudText Typo="Typo.h6" Class="mt-3 mb-2" Style="font-weight:600;">Book Appointment</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Schedule your clinic visit in just a few steps. Choose your preferred clinic, date, and time.
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions Class="justify-center pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/book"))">
+                        Book Now
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="3" Style="border-radius:12px; height:100%;">
+                <MudCardContent Class="text-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Color="Color.Secondary" Style="font-size:3rem;" />
+                    <MudText Typo="Typo.h6" Class="mt-3 mb-2" Style="font-weight:600;">View Available Clinics</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Browse all registered clinics, view their operating hours, and find one near you.
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions Class="justify-center pb-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => Navigation.NavigateTo("/book"))">
+                        Browse Clinics
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="3" Style="border-radius:12px; height:100%;">
+                <MudCardContent Class="text-center pa-6">
+                    <MudIcon Icon="@Icons.Material.Filled.EventNote" Color="Color.Success" Style="font-size:3rem;" />
+                    <MudText Typo="Typo.h6" Class="mt-3 mb-2" Style="font-weight:600;">Manage Appointments</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        View, cancel, or reschedule your existing appointments with ease.
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions Class="justify-center pb-4">
+                    <MudButton Variant="Variant.Filled" Style="background:#4CAF50; color:white;" OnClick="@(() => Navigation.NavigateTo("/my-appointments"))">
+                        My Appointments
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Active Clinics Section -->
+    @if (clinics.Any())
+    {
+        <MudText Typo="Typo.h5" Class="mt-10 mb-4" Style="font-weight:600;">Available Clinics</MudText>
+        <MudGrid>
+            @foreach (var clinic in clinics)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="2" Style="border-radius:12px;">
+                        <MudCardHeader>
+                            <CardHeaderAvatar>
+                                <MudAvatar Color="Color.Primary">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocalHospital" />
+                                </MudAvatar>
+                            </CardHeaderAvatar>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">@clinic.Name</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@clinic.Address</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2">
+                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Class="mr-1" />
+                                @clinic.OpeningTime – @clinic.ClosingTime
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="mt-1">
+                                <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Class="mr-1" />
+                                @clinic.Phone
+                            </MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/book"))">
+                                Book Here
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<ClinicDto> clinics = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        clinics = await ClinicService.GetAllClinicsAsync();
+    }
+}

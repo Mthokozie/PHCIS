@@ -1,0 +1,221 @@
+@page "/book"
+@inject IClinicService ClinicService
+@inject ITimeSlotService TimeSlotService
+@inject IAppointmentService AppointmentService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Book Appointment - PHCIS Clinic Booking</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8 mb-8">
+    <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-2" Style="font-weight:700;">Book a Clinic Appointment</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+        Select your preferred PHCIS clinic, date, and available time slot below.
+    </MudText>
+
+    @if (_confirmation is not null)
+    {
+        <AppointmentConfirmationDialog Confirmation="_confirmation" OnBookAnother="ResetForm" />
+    }
+    else
+    {
+        <MudCard Elevation="3" Class="pa-6" Style="border-radius: 12px;">
+            <MudGrid>
+                <!-- Step 1: Select Clinic -->
+                <MudItem xs="12" md="6">
+                    <MudSelect T="Guid"
+                               Label="1. Select Healthcare Clinic"
+                               Value="_selectedClinicId"
+                               ValueChanged="OnClinicChangedAsync"
+                               Variant="Variant.Outlined"
+                               Required="true">
+                        <MudSelectItem Value="@Guid.Empty" Disabled="true">-- Choose a Clinic --</MudSelectItem>
+                        @foreach (var clinic in _clinics)
+                        {
+                            <MudSelectItem Value="@clinic.Id">@clinic.Name (@clinic.OpeningTime - @clinic.ClosingTime)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <!-- Step 2: Select Date -->
+                <MudItem xs="12" md="6">
+                    <MudDatePicker Label="2. Select Appointment Date"
+                                   Date="_selectedDate"
+                                   DateChanged="OnDateChangedAsync"
+                                   MinDate="@DateTime.Today"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+
+                <!-- Step 3: Select Available Time Slot -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2" Style="font-weight:600;">3. Available Time Slots</MudText>
+                    @if (_loadingSlots)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+                    }
+                    else if (_selectedClinicId == Guid.Empty)
+                    {
+                        <MudAlert Severity="Severity.Info">Please select a clinic first to view available time slots.</MudAlert>
+                    }
+                    else if (_availableSlots.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Warning">No available time slots found for the selected clinic and date.</MudAlert>
+                    }
+                    else
+                    {
+                        <MudGrid>
+                            @foreach (var slot in _availableSlots)
+                            {
+                                var isSelected = _selectedSlotId == slot.Id;
+                                <MudItem xs="6" sm="4" md="3">
+                                    <MudButton Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                               Color="@(isSelected ? Color.Primary : Color.Default)"
+                                               FullWidth="true"
+                                               Disabled="@(!slot.IsAvailable || slot.RemainingCapacity <= 0)"
+                                               OnClick="@(() => _selectedSlotId = slot.Id)"
+                                               Class="py-3 d-flex flex-column">
+                                        <MudText Typo="Typo.body1" Style="font-weight:600;">
+                                            @slot.StartTime.ToString("HH:mm") - @slot.EndTime.ToString("HH:mm")
+                                        </MudText>
+                                        <MudText Typo="Typo.caption">
+                                            @slot.RemainingCapacity spots left
+                                        </MudText>
+                                    </MudButton>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                </MudItem>
+
+                <!-- Step 4: Reason for Visit -->
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_reason"
+                                  Label="4. Reason for Appointment / Symptoms"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  Placeholder="e.g., Routine health checkup, chronic medication collection, maternal care..."
+                                  Required="true" />
+                </MudItem>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+                    </MudItem>
+                }
+
+                <!-- Step 5: Submit -->
+                <MudItem xs="12" Class="d-flex justify-end">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               Disabled="@(_isSubmitting || _selectedSlotId == Guid.Empty)"
+                               OnClick="SubmitBookingAsync">
+                        @(_isSubmitting ? "Confirming Booking..." : "Confirm Appointment")
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCard>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid? ClinicId { get; set; }
+
+    private List<ClinicDto> _clinics = new();
+    private List<TimeSlotDto> _availableSlots = new();
+    private Guid _selectedClinicId = Guid.Empty;
+    private DateTime? _selectedDate = DateTime.Today;
+    private Guid _selectedSlotId = Guid.Empty;
+    private string _reason = string.Empty;
+    private bool _loadingSlots;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private AppointmentConfirmationDto? _confirmation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _clinics = await ClinicService.GetAllClinicsAsync();
+        if (ClinicId.HasValue && ClinicId.Value != Guid.Empty)
+        {
+            _selectedClinicId = ClinicId.Value;
+            await LoadSlotsAsync();
+        }
+        else if (_clinics.Count > 0)
+        {
+            _selectedClinicId = _clinics[0].Id;
+            await LoadSlotsAsync();
+        }
+    }
+
+    private async Task OnClinicChangedAsync(Guid clinicId)
+    {
+        _selectedClinicId = clinicId;
+        _selectedSlotId = Guid.Empty;
+        await LoadSlotsAsync();
+    }
+
+    private async Task OnDateChangedAsync(DateTime? date)
+    {
+        _selectedDate = date;
+        _selectedSlotId = Guid.Empty;
+        await LoadSlotsAsync();
+    }
+
+    private async Task LoadSlotsAsync()
+    {
+        if (_selectedClinicId == Guid.Empty || !_selectedDate.HasValue)
+            return;
+
+        _loadingSlots = true;
+        _availableSlots = await TimeSlotService.GetAvailableSlotsAsync(_selectedClinicId, _selectedDate.Value);
+        _loadingSlots = false;
+    }
+
+    private async Task SubmitBookingAsync()
+    {
+        _errorMessage = null;
+        var patientId = await AuthService.GetPatientIdAsync();
+        if (!patientId.HasValue || patientId.Value == Guid.Empty)
+        {
+            Snackbar.Add("Please sign in to complete your appointment booking.", Severity.Warning);
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_reason))
+        {
+            _errorMessage = "Please provide a reason for your visit.";
+            return;
+        }
+
+        _isSubmitting = true;
+        var result = await AppointmentService.BookAppointmentAsync(new BookAppointmentRequest
+        {
+            PatientId = patientId.Value,
+            TimeSlotId = _selectedSlotId,
+            Reason = _reason
+        });
+        _isSubmitting = false;
+
+        if (result is not null)
+        {
+            _confirmation = result;
+            Snackbar.Add($"Appointment booked! Code: {result.ConfirmationCode}", Severity.Success);
+        }
+        else
+        {
+            _errorMessage = "Unable to complete booking. Please verify you don't already have a booking for this slot.";
+        }
+    }
+
+    private async Task ResetForm()
+    {
+        _confirmation = null;
+        _selectedSlotId = Guid.Empty;
+        _reason = string.Empty;
+        await LoadSlotsAsync();
+    }
+}
