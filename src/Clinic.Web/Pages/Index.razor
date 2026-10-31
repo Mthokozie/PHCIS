@@ -5,31 +5,32 @@
 
 <PageTitle>PHCIS Clinic Booking - Home</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="phcis-page-container">
     <!-- Hero Section -->
-    <MudPaper Elevation="0" Class="pa-8 mb-8 mud-theme-primary" Style="background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%); border-radius: 16px;">
+    <MudPaper Elevation="0" Class="phcis-hero mb-6 mud-theme-primary" Style="background: linear-gradient(135deg, #1976D2 0%, #42A5F5 100%);">
         <MudGrid>
             <MudItem xs="12" md="8">
-                <MudText Typo="Typo.h3" Style="color:white; font-weight:700;">Welcome to PHCIS Clinic Booking</MudText>
-                <MudText Typo="Typo.h6" Style="color:rgba(255,255,255,0.85);" Class="mt-2 mb-6">
+                <MudText Typo="Typo.h4" Style="color:white; font-weight:700;">Welcome to PHCIS Clinic Booking</MudText>
+                <MudText Typo="Typo.subtitle1" Style="color:rgba(255,255,255,0.9);" Class="mt-2 mb-5">
                     Book appointments at your nearest uMkhanyakude District clinic quickly and conveniently.
                 </MudText>
-                <MudButton Variant="Variant.Filled"
-                           Size="Size.Large"
-                           Style="background:white; color:#1976D2; font-weight:600;"
-                           OnClick="@(() => Navigation.NavigateTo("/book"))">
-                    Book an Appointment
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           Size="Size.Large"
-                           Style="color:white; border-color:white;"
-                           Class="ml-3"
-                           OnClick="@(() => Navigation.NavigateTo("/dashboard"))">
-                    My Dashboard
-                </MudButton>
+                <div class="d-flex flex-wrap gap-3">
+                    <MudButton Variant="Variant.Filled"
+                               Size="Size.Large"
+                               Style="background:white; color:#1976D2; font-weight:600;"
+                               OnClick="@(() => Navigation.NavigateTo("/book"))">
+                        Book an Appointment
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Size="Size.Large"
+                               Style="color:white; border-color:white;"
+                               OnClick="@(() => Navigation.NavigateTo("/dashboard"))">
+                        My Dashboard
+                    </MudButton>
+                </div>
             </MudItem>
-            <MudItem xs="12" md="4" Class="d-flex align-center justify-center">
-                <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Style="font-size:8rem; color:rgba(255,255,255,0.3);" />
+            <MudItem xs="12" md="4" Class="d-none d-md-flex align-center justify-center">
+                <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Style="font-size:7rem; color:rgba(255,255,255,0.3);" />
             </MudItem>
         </MudGrid>
     </MudPaper>
@@ -60,7 +61,7 @@
                     <MudIcon Icon="@Icons.Material.Filled.Business" Color="Color.Secondary" Style="font-size:3rem;" />
                     <MudText Typo="Typo.h6" Class="mt-3 mb-2" Style="font-weight:600;">View Available Clinics</MudText>
                     <MudText Typo="Typo.body2" Color="Color.Secondary">
-                        Browse all registered clinics, view their operating hours, and find one near you.
+                        Browse all registered uMkhanyakude District clinics, view their operating hours, and find one near you.
                     </MudText>
                 </MudCardContent>
                 <MudCardActions Class="justify-center pb-4">
@@ -89,50 +90,75 @@
         </MudItem>
     </MudGrid>
 
-    <!-- Active Clinics Section -->
-    @if (clinics.Any())
-    {
-        <MudText Typo="Typo.h5" Class="mt-10 mb-4" Style="font-weight:600;">Available Clinics</MudText>
-        <MudGrid>
-            @foreach (var clinic in clinics)
-            {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard Elevation="2" Style="border-radius:12px;">
-                        <MudCardHeader>
-                            <CardHeaderAvatar>
-                                <MudAvatar Color="Color.Primary">
-                                    <MudIcon Icon="@Icons.Material.Filled.LocalHospital" />
-                                </MudAvatar>
-                            </CardHeaderAvatar>
-                            <CardHeaderContent>
-                                <MudText Typo="Typo.subtitle1" Style="font-weight:600;">@clinic.Name</MudText>
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@clinic.Address</MudText>
-                            </CardHeaderContent>
-                        </MudCardHeader>
-                        <MudCardContent>
-                            <MudText Typo="Typo.body2">
-                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Class="mr-1" />
-                                @clinic.OpeningTime – @clinic.ClosingTime
-                            </MudText>
-                            <MudText Typo="Typo.body2" Class="mt-1">
-                                <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Class="mr-1" />
-                                @clinic.Phone
-                            </MudText>
-                        </MudCardContent>
-                        <MudCardActions>
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => Navigation.NavigateTo("/book"))">
-                                Book Here
-                            </MudButton>
-                        </MudCardActions>
-                    </MudCard>
-                </MudItem>
-            }
-        </MudGrid>
-    }
+    <!-- Active Clinics QuickGrid Section -->
+    <MudCard Elevation="3" Class="phcis-card mt-8">
+        <div class="phcis-toolbar">
+            <div>
+                <MudText Typo="Typo.h5" Style="font-weight:600;">Available uMkhanyakude District Clinics</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Browse clinics with sorting and customizable pagination</MudText>
+            </div>
+            <div class="phcis-toolbar-controls">
+                <MudTextField @bind-Value="_clinicSearch"
+                              Placeholder="Search clinic name or address..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Immediate="true"
+                              Class="phcis-search-input" />
+
+                <MudSelect T="int"
+                           Label="Show per page"
+                           Value="_clinicPagination.ItemsPerPage"
+                           ValueChanged="OnClinicPageSizeChangedAsync"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Class="phcis-pagesize-select">
+                    <MudSelectItem Value="3">3 per page</MudSelectItem>
+                    <MudSelectItem Value="5">5 per page</MudSelectItem>
+                    <MudSelectItem Value="10">10 per page</MudSelectItem>
+                    <MudSelectItem Value="20">20 per page</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+
+        <div class="phcis-quickgrid-wrapper">
+            <Microsoft.AspNetCore.Components.QuickGrid.QuickGrid Items="@FilteredClinics" Pagination="@_clinicPagination">
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Name)" Title="Clinic Name" Sortable="true" />
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Address)" Title="Address / Area" Sortable="true" />
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Operating Hours" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<ClinicDto>.ByAscending(c => c.OpeningTime))">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">
+                        @context.OpeningTime – @context.ClosingTime
+                    </MudChip>
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(c => c.Phone)" Title="Phone" />
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Action">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.CalendarMonth"
+                               OnClick="@(() => Navigation.NavigateTo($"/book?ClinicId={context.Id}"))">
+                        Book Here
+                    </MudButton>
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+            </Microsoft.AspNetCore.Components.QuickGrid.QuickGrid>
+        </div>
+
+        <Microsoft.AspNetCore.Components.QuickGrid.Paginator State="@_clinicPagination" />
+    </MudCard>
 </MudContainer>
 
 @code {
-    private List<ClinicDto> clinics = new();
+    private List<ClinicDto> _clinics = new();
+    private string _clinicSearch = string.Empty;
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _clinicPagination = new() { ItemsPerPage = 5 };
+
+    private IQueryable<ClinicDto> FilteredClinics =>
+        _clinics
+            .Where(c => string.IsNullOrWhiteSpace(_clinicSearch)
+                || c.Name.Contains(_clinicSearch, StringComparison.OrdinalIgnoreCase)
+                || c.Address.Contains(_clinicSearch, StringComparison.OrdinalIgnoreCase))
+            .AsQueryable();
 
     protected override async Task OnInitializedAsync()
     {
@@ -142,6 +168,12 @@
             return;
         }
 
-        clinics = await ClinicService.GetAllClinicsAsync();
+        _clinics = await ClinicService.GetAllClinicsAsync();
+    }
+
+    private async Task OnClinicPageSizeChangedAsync(int newSize)
+    {
+        _clinicPagination.ItemsPerPage = newSize;
+        await _clinicPagination.SetCurrentPageIndexAsync(0);
     }
 }

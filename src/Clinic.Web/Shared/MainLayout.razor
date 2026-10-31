@@ -26,12 +26,36 @@ else if (!_isAuthenticated)
 else
 {
     <MudLayout>
-        <MudAppBar Elevation="2" Color="Color.Primary">
-            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-            <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Class="ml-2 mr-1" />
-            <MudText Typo="Typo.h6" Style="font-weight:700;">PHCIS Clinic Booking</MudText>
+        <MudAppBar Elevation="2" Color="Color.Primary" Dense="false">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           Edge="Edge.Start"
+                           OnClick="@ToggleDrawer"
+                            aria-label="Toggle navigation" />
+            <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Class="ml-1 mr-2 d-none d-sm-flex" />
+            <MudText Typo="Typo.h6" Class="phcis-appbar-title" Style="font-weight:700;">
+                PHCIS Clinic Booking
+            </MudText>
             <MudSpacer />
-            <MudButton Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/my-appointments"))">My Appointments</MudButton>
+
+            <!-- Desktop / Tablet Action Buttons -->
+            <div class="d-none d-sm-flex align-center">
+                <MudButton Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.EventNote"
+                           OnClick="@(() => Navigation.NavigateTo("/my-appointments"))">
+                    My Appointments
+                </MudButton>
+            </div>
+
+            <!-- Mobile Action Icon -->
+            <div class="d-flex d-sm-none align-center">
+                <MudTooltip Text="My Appointments">
+                    <MudIconButton Icon="@Icons.Material.Filled.EventNote"
+                                   Color="Color.Inherit"
+                                   OnClick="@(() => Navigation.NavigateTo("/my-appointments"))" />
+                </MudTooltip>
+            </div>
+
             <MudTooltip Text="Edit My Profile & Photo">
                 <MudIconButton OnClick="@(() => Navigation.NavigateTo("/profile"))" Class="ml-1">
                     <MudAvatar Size="Size.Small" Color="Color.Secondary">
@@ -46,14 +70,37 @@ else
                     </MudAvatar>
                 </MudIconButton>
             </MudTooltip>
-            <MudButton Color="Color.Inherit" Variant="Variant.Outlined" Class="ml-2" OnClick="LogoutAsync">Sign Out</MudButton>
+
+            <!-- Desktop Sign Out Button -->
+            <div class="d-none d-sm-flex">
+                <MudButton Color="Color.Inherit"
+                           Variant="Variant.Outlined"
+                           Class="ml-2"
+                           StartIcon="@Icons.Material.Filled.Logout"
+                           OnClick="LogoutAsync">
+                    Sign Out
+                </MudButton>
+            </div>
+
+            <!-- Mobile Sign Out Icon -->
+            <div class="d-flex d-sm-none">
+                <MudTooltip Text="Sign Out">
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                                   Color="Color.Inherit"
+                                   OnClick="LogoutAsync" />
+                </MudTooltip>
+            </div>
         </MudAppBar>
 
-        <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
+        <MudDrawer @bind-Open="_drawerOpen"
+                   Elevation="2"
+                   Variant="DrawerVariant.Responsive"
+                   Breakpoint="Breakpoint.Md"
+                   ClipMode="DrawerClipMode.Always">
             <NavMenu IsAuthenticated="_isAuthenticated" />
         </MudDrawer>
 
-        <MudMainContent>
+        <MudMainContent Class="phcis-main-content">
             @Body
         </MudMainContent>
     </MudLayout>

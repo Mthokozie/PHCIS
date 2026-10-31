@@ -1,5 +1,13 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    background-color: #f7f9fc;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
 }
 
 h1:focus {
@@ -17,7 +25,7 @@ a, .btn-link {
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
 .content {
@@ -67,48 +75,210 @@ a, .btn-link {
         content: "An error has occurred."
     }
 
-.loading-progress {
-    position: relative;
-    display: block;
-    width: 8rem;
-    height: 8rem;
-    margin: 20vh auto 1rem auto;
+/* =========================================================
+   Responsive Layout & Screen-Size Accommodations
+   (Mobile xs <600px, Tablet sm/md 600-1279px, Desktop lg/xl)
+   ========================================================= */
+
+.phcis-appbar-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-    .loading-progress circle {
-        fill: none;
-        stroke: #e0e0e0;
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
+.phcis-page-container {
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.phcis-hero {
+    padding: 2rem;
+    border-radius: 16px;
+}
+
+.phcis-card {
+    padding: 1.5rem;
+    border-radius: 12px;
+}
+
+.phcis-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.phcis-toolbar-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.phcis-search-input {
+    min-width: 240px;
+}
+
+.phcis-pagesize-select {
+    width: 150px;
+}
+
+/* PHCIS QuickGrid & Paginator Styling */
+.phcis-quickgrid-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid #e6ecf2;
+}
+
+table.quickgrid {
+    width: 100%;
+    min-width: 580px;
+    border-collapse: collapse;
+    font-size: 0.925rem;
+    background-color: #ffffff;
+}
+
+table.quickgrid thead th {
+    background-color: #f4f7fb;
+    color: #1976D2;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-bottom: 2px solid #dce4ec;
+    text-align: left;
+    white-space: nowrap;
+}
+
+table.quickgrid tbody td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #eef2f6;
+    vertical-align: middle;
+}
+
+table.quickgrid tbody tr:hover {
+    background-color: #f8fbff;
+}
+
+.paginator {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem 0.5rem 0.25rem 0.5rem;
+    border-top: 1px solid #e0e6ed;
+    margin-top: 0.5rem;
+}
+
+.paginator nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.paginator nav button {
+    border-radius: 6px;
+}
+
+/* Tablet screens (max-width: 960px) */
+@media (max-width: 960px) {
+    .phcis-page-container {
+        padding-top: 1rem;
+        padding-bottom: 1.75rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
 
-        .loading-progress circle:last-child {
-            stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
-
-.loading-progress-text {
-    position: absolute;
-    text-align: center;
-    font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
-}
-
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Loading");
+    .phcis-hero {
+        padding: 1.5rem;
     }
 
-code {
-    color: #c02d76;
+    .phcis-card {
+        padding: 1.15rem;
+    }
+
+    table.quickgrid {
+        font-size: 0.875rem;
+    }
+
+    table.quickgrid thead th,
+    table.quickgrid tbody td {
+        padding: 0.6rem 0.75rem;
+    }
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
+/* Mobile phones (max-width: 600px) */
+@media (max-width: 600px) {
+    .phcis-appbar-title {
+        font-size: 1rem !important;
+    }
+
+    .phcis-page-container {
+        padding-top: 0.75rem;
+        padding-bottom: 1.5rem;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .phcis-hero {
+        padding: 1.25rem;
+        border-radius: 12px;
+    }
+
+    .phcis-card {
+        padding: 0.875rem;
+        border-radius: 10px;
+    }
+
+    .phcis-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .phcis-toolbar-controls {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .phcis-search-input,
+    .phcis-pagesize-select {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    table.quickgrid {
+        font-size: 0.82rem;
+        min-width: 480px;
+    }
+
+    table.quickgrid thead th,
+    table.quickgrid tbody td {
+        padding: 0.5rem 0.6rem;
+    }
+
+    .paginator {
+        justify-content: center;
+        text-align: center;
+    }
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
+/* Large / Ultra-wide screens (min-width: 1600px) */
+@media (min-width: 1600px) {
+    .phcis-page-container {
+        max-width: 1560px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    table.quickgrid {
+        font-size: 0.96rem;
+    }
 }
