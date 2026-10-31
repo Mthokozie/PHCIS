@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="clinicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1565C0" />
+      <stop offset="100%" stop-color="#26A69A" />
+    </linearGradient>
+  </defs>
+  <!-- Rounded Clinic Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#clinicGrad)" />
+  <!-- Medical Cross -->
+  <path d="M26 14 H38 V26 H50 V38 H38 V50 H26 V38 H14 V26 H26 Z" fill="#FFFFFF" />
+  <!-- Subtle Heartbeat Accent inside Cross -->
+  <polyline points="18,32 25,32 28,25 32,39 35,29 38,32 46,32"
+            fill="none" stroke="#1565C0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

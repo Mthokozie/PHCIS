@@ -26,7 +26,7 @@ public class UpdatePatientCommandHandler : IRequestHandler<UpdatePatientCommand,
         var patient = await _patientRepository.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Patient), request.Id);
 
-        patient.Update(request.FirstName, request.LastName, request.PhoneNumber);
+        patient.Update(request.FirstName, request.LastName, request.PhoneNumber, request.ProfileImageUrl);
         _patientRepository.Update(patient);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

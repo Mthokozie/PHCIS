@@ -35,7 +35,8 @@ public class CreatePatientCommandHandler : IRequestHandler<CreatePatientCommand,
             request.Email,
             request.PhoneNumber,
             request.DateOfBirth,
-            request.IdNumber);
+            request.IdNumber,
+            request.ProfileImageUrl);
 
         await _patientRepository.AddAsync(patient, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

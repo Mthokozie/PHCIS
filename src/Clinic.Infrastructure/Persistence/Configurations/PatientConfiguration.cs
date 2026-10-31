@@ -43,6 +43,9 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.HasIndex(p => p.IdNumber)
             .IsUnique();
 
+        builder.Property(p => p.ProfileImageUrl)
+            .IsRequired(false);
+
         // Restrict delete to preserve healthcare data integrity.
         builder.HasMany(p => p.Appointments)
             .WithOne(a => a.Patient)

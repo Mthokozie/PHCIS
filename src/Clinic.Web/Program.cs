@@ -16,6 +16,7 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddMudServices();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPatientService, PatientService>();
 builder.Services.AddScoped<IClinicService, ClinicService>();
 builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();

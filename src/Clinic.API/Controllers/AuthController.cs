@@ -31,7 +31,7 @@ public class AuthController : BaseApiController
         _configuration = configuration;
     }
 
-    /// <summary>Registers a new patient account and linked patient profile.</summary>
+    /// <summary>Registers a new patient account and linked patient profile (including optional profile image).</summary>
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
@@ -47,7 +47,8 @@ public class AuthController : BaseApiController
             request.Email,
             request.PhoneNumber,
             request.DateOfBirth,
-            request.IdNumber), ct);
+            request.IdNumber,
+            request.ProfileImageUrl), ct);
 
         var user = new ApplicationUser
         {
@@ -55,7 +56,8 @@ public class AuthController : BaseApiController
             Email = request.Email,
             PhoneNumber = request.PhoneNumber,
             Role = "Patient",
-            PatientId = patientId
+            PatientId = patientId,
+            ProfileImageUrl = request.ProfileImageUrl
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -131,7 +133,8 @@ public record RegisterRequest(
     string Password,
     string PhoneNumber,
     DateTime DateOfBirth,
-    string IdNumber);
+    string IdNumber,
+    string? ProfileImageUrl = null);
 
 /// <summary>Request payload for user login.</summary>
 public record LoginRequest(string Email, string Password);

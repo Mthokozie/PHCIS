@@ -29,6 +29,9 @@ public class PatientDto
     /// <summary>Gets or sets the patient's date of birth.</summary>
     public DateTime DateOfBirth { get; set; }
 
+    /// <summary>Gets or sets the patient's profile image (Data URI or URL).</summary>
+    public string? ProfileImageUrl { get; set; }
+
     /// <summary>Gets or sets a value indicating whether the patient is active.</summary>
     public bool IsActive { get; set; }
 }

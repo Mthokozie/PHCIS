@@ -13,4 +13,7 @@ public class ApplicationUser : IdentityUser
 
     /// <summary>Gets or sets the linked patient ID (null if not a patient user).</summary>
     public Guid? PatientId { get; set; }
+
+    /// <summary>Gets or sets an optional profile image (Data URI or URL).</summary>
+    public string? ProfileImageUrl { get; set; }
 }
