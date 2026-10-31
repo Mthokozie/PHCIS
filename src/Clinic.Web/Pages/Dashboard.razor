@@ -1,16 +1,41 @@
 @page "/dashboard"
 @inject IAppointmentService AppointmentService
 @inject IClinicService ClinicService
+@inject IPatientService PatientService
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 
 <PageTitle>Dashboard - PHCIS Clinic Booking</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8 mb-8">
-    <MudText Typo="Typo.h4" Color="Color.Primary" Class="mb-2" Style="font-weight:700;">Patient Dashboard</MudText>
-    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-        Overview of your PHCIS healthcare appointments and active clinics.
-    </MudText>
+    <MudPaper Elevation="2" Class="pa-5 mb-6 d-flex align-center justify-space-between flex-wrap gap-4" Style="border-radius: 12px;">
+        <div class="d-flex align-center gap-4">
+            <MudAvatar Style="height:72px; width:72px; font-size:1.75rem;" Color="Color.Primary">
+                @if (!string.IsNullOrEmpty(_patient?.ProfileImageUrl))
+                {
+                    <MudImage Src="@_patient.ProfileImageUrl" Alt="Patient Avatar" Style="width:100%;height:100%;object-fit:cover;" />
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+                }
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">
+                    @(_patient is not null ? $"Welcome, {_patient.FullName}" : "Patient Dashboard")
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    @(_patient is not null ? $"{_patient.Email} • {_patient.PhoneNumber}" : "Overview of your PHCIS healthcare appointments and active clinics.")
+                </MudText>
+            </div>
+        </div>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Edit"
+                   OnClick="@(() => Navigation.NavigateTo("/profile"))">
+            Edit Profile & Photo
+        </MudButton>
+    </MudPaper>
 
     <MudGrid Class="mb-6">
         <MudItem xs="12" sm="4">
@@ -86,6 +111,7 @@
 @code {
     private List<AppointmentDto> _appointments = new();
     private List<ClinicDto> _clinics = new();
+    private PatientDto? _patient;
 
     protected override async Task OnInitializedAsync()
     {
@@ -93,6 +119,7 @@
         var patientId = await AuthService.GetPatientIdAsync();
         if (patientId.HasValue && patientId.Value != Guid.Empty)
         {
+            _patient = await PatientService.GetPatientByIdAsync(patientId.Value);
             _appointments = await AppointmentService.GetPatientAppointmentsAsync(patientId.Value);
         }
     }

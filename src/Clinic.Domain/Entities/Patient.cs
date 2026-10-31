@@ -10,14 +10,7 @@ public class Patient : BaseEntity
 {
     private readonly List<Appointment> _appointments = new();
 
-    // -------------------------------------------------------------------------
-    // Private constructor — use the factory method to create instances.
-    // -------------------------------------------------------------------------
     private Patient() { }
-
-    // -------------------------------------------------------------------------
-    // Properties
-    // -------------------------------------------------------------------------
 
     /// <summary>Gets the patient's first name.</summary>
     public string FirstName { get; private set; } = string.Empty;
@@ -37,6 +30,9 @@ public class Patient : BaseEntity
     /// <summary>Gets the patient's national / government-issued identity number.</summary>
     public string IdNumber { get; private set; } = string.Empty;
 
+    /// <summary>Gets the patient's profile image (Data URI or URL), if provided.</summary>
+    public string? ProfileImageUrl { get; private set; }
+
     /// <summary>Gets a value indicating whether the patient account is currently active.</summary>
     public bool IsActive { get; private set; }
 
@@ -50,31 +46,18 @@ public class Patient : BaseEntity
     /// </summary>
     public IReadOnlyCollection<Appointment> Appointments => _appointments.AsReadOnly();
 
-    // -------------------------------------------------------------------------
-    // Factory
-    // -------------------------------------------------------------------------
-
     /// <summary>
     /// Creates and returns a new, active <see cref="Patient"/> instance after
     /// validating all required fields.
     /// </summary>
-    /// <param name="firstName">The patient's first name.</param>
-    /// <param name="lastName">The patient's last name.</param>
-    /// <param name="email">The patient's email address.</param>
-    /// <param name="phone">The patient's phone number.</param>
-    /// <param name="dob">The patient's date of birth.</param>
-    /// <param name="idNumber">The patient's national identity number.</param>
-    /// <returns>A newly created <see cref="Patient"/>.</returns>
-    /// <exception cref="DomainException">
-    /// Thrown when any required field is null or whitespace.
-    /// </exception>
     public static Patient Create(
         string firstName,
         string lastName,
         string email,
         string phone,
         DateTime dob,
-        string idNumber)
+        string idNumber,
+        string? profileImageUrl = null)
     {
         if (string.IsNullOrWhiteSpace(firstName))
             throw new DomainException("Patient first name is required.");
@@ -98,31 +81,24 @@ public class Patient : BaseEntity
 
         return new Patient
         {
-            Id            = Guid.NewGuid(),
-            FirstName     = firstName.Trim(),
-            LastName      = lastName.Trim(),
-            Email         = email.Trim(),
-            PhoneNumber   = phone.Trim(),
-            DateOfBirth   = dob,
-            IdNumber      = idNumber.Trim(),
-            IsActive      = true,
-            CreatedAt     = now,
-            UpdatedAt     = now
+            Id              = Guid.NewGuid(),
+            FirstName       = firstName.Trim(),
+            LastName        = lastName.Trim(),
+            Email           = email.Trim(),
+            PhoneNumber     = phone.Trim(),
+            DateOfBirth     = dob,
+            IdNumber        = idNumber.Trim(),
+            ProfileImageUrl = string.IsNullOrWhiteSpace(profileImageUrl) ? null : profileImageUrl.Trim(),
+            IsActive        = true,
+            CreatedAt       = now,
+            UpdatedAt       = now
         };
     }
 
-    // -------------------------------------------------------------------------
-    // Behaviour
-    // -------------------------------------------------------------------------
-
     /// <summary>
-    /// Updates the patient's mutable personal details.
+    /// Updates the patient's mutable personal details and optional profile image.
     /// </summary>
-    /// <param name="firstName">New first name.</param>
-    /// <param name="lastName">New last name.</param>
-    /// <param name="phone">New phone number.</param>
-    /// <exception cref="DomainException">Thrown when any argument is null or whitespace.</exception>
-    public void Update(string firstName, string lastName, string phone)
+    public void Update(string firstName, string lastName, string phone, string? profileImageUrl = null)
     {
         if (string.IsNullOrWhiteSpace(firstName))
             throw new DomainException("Patient first name is required.");
@@ -136,6 +112,10 @@ public class Patient : BaseEntity
         FirstName   = firstName.Trim();
         LastName    = lastName.Trim();
         PhoneNumber = phone.Trim();
+        if (profileImageUrl is not null)
+        {
+            ProfileImageUrl = string.IsNullOrWhiteSpace(profileImageUrl) ? null : profileImageUrl.Trim();
+        }
         UpdatedAt   = DateTime.UtcNow;
     }
 

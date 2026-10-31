@@ -1,0 +1,194 @@
+@page "/profile"
+@inject IPatientService PatientService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Edit Profile - PHCIS Clinic Booking</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8 mb-8">
+    <MudCard Elevation="4" Class="pa-6" Style="border-radius: 12px;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">My Patient Profile</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Update your personal details and profile photo</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+
+        @if (_loading)
+        {
+            <MudCardContent>
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            </MudCardContent>
+        }
+        else if (_patient is null)
+        {
+            <MudCardContent>
+                <MudAlert Severity="Severity.Warning">Unable to load your patient profile. Please sign in again.</MudAlert>
+            </MudCardContent>
+        }
+        else
+        {
+            <MudCardContent>
+                <!-- Profile Image Avatar & Upload Controls -->
+                <div class="d-flex flex-column align-center mb-6">
+                    <MudAvatar Style="height:110px; width:110px; font-size:2.5rem;" Color="Color.Primary" Class="mb-3">
+                        @if (!string.IsNullOrEmpty(_profileImageUrl))
+                        {
+                            <MudImage Src="@_profileImageUrl" Alt="Patient Profile Photo" Style="width:100%;height:100%;object-fit:cover;" />
+                        }
+                        else
+                        {
+                            @GetInitials()
+                        }
+                    </MudAvatar>
+
+                    <div class="d-flex gap-2 align-center">
+                        <MudFileUpload T="IBrowserFile" Accept=".jpg,.jpeg,.png,.webp" FilesChanged="OnProfileImageSelectedAsync" MaximumFileCount="1">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.PhotoCamera">
+                                    @(string.IsNullOrEmpty(_profileImageUrl) ? "Add Profile Photo" : "Change Photo")
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+
+                        @if (!string.IsNullOrEmpty(_profileImageUrl))
+                        {
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.DeleteOutline"
+                                       OnClick="@(() => _profileImageUrl = string.Empty)">
+                                Remove
+                            </MudButton>
+                        }
+                    </div>
+                </div>
+
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_firstName" Label="First Name" Variant="Variant.Outlined" Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_lastName" Label="Last Name" Variant="Variant.Outlined" Required="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_phoneNumber" Label="Phone Number" Variant="Variant.Outlined" Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Value="@_patient.Email" Label="Email Address" Variant="Variant.Filled" ReadOnly="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Value="@_patient.IdNumber" Label="National ID Number" Variant="Variant.Filled" ReadOnly="true" />
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+            <MudCardActions Class="d-flex justify-end gap-2 px-4 pb-4">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           OnClick="@(() => Navigation.NavigateTo("/dashboard"))">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@_saving"
+                           OnClick="SaveProfileAsync">
+                    @(_saving ? "Saving..." : "Save Changes")
+                </MudButton>
+            </MudCardActions>
+        }
+    </MudCard>
+</MudContainer>
+
+@code {
+    private PatientDto? _patient;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _phoneNumber = string.Empty;
+    private string? _profileImageUrl;
+    private bool _loading = true;
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var patientId = await AuthService.GetPatientIdAsync();
+        if (!patientId.HasValue || patientId.Value == Guid.Empty)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        _patient = await PatientService.GetPatientByIdAsync(patientId.Value);
+        if (_patient is not null)
+        {
+            _firstName = _patient.FirstName;
+            _lastName = _patient.LastName;
+            _phoneNumber = _patient.PhoneNumber;
+            _profileImageUrl = _patient.ProfileImageUrl;
+        }
+        _loading = false;
+    }
+
+    private async Task OnProfileImageSelectedAsync(IBrowserFile? file)
+    {
+        if (file is null)
+            return;
+
+        try
+        {
+            var resizedFile = await file.RequestImageFileAsync("image/jpeg", 256, 256);
+            using var stream = resizedFile.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            _profileImageUrl = $"data:image/jpeg;base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not process image: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (_patient is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(_firstName) || string.IsNullOrWhiteSpace(_lastName) || string.IsNullOrWhiteSpace(_phoneNumber))
+        {
+            Snackbar.Add("First name, last name, and phone number are required.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        var updated = await PatientService.UpdatePatientAsync(new UpdatePatientRequest
+        {
+            Id = _patient.Id,
+            FirstName = _firstName,
+            LastName = _lastName,
+            PhoneNumber = _phoneNumber,
+            ProfileImageUrl = _profileImageUrl ?? string.Empty
+        });
+        _saving = false;
+
+        if (updated)
+        {
+            Snackbar.Add("Profile updated successfully!", Severity.Success);
+            Navigation.NavigateTo("/dashboard", forceLoad: true);
+        }
+        else
+        {
+            Snackbar.Add("Failed to update profile. Please try again.", Severity.Error);
+        }
+    }
+
+    private string GetInitials()
+    {
+        var f = !string.IsNullOrWhiteSpace(_firstName) ? _firstName[0].ToString().ToUpper() : "P";
+        var l = !string.IsNullOrWhiteSpace(_lastName) ? _lastName[0].ToString().ToUpper() : "";
+        return f + l;
+    }
+}

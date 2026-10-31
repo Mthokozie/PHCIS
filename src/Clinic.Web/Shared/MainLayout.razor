@@ -1,15 +1,31 @@
 @inherits LayoutComponentBase
 @inject IAuthService AuthService
+@inject IPatientService PatientService
 @inject NavigationManager Navigation
 
 <MudLayout>
     <MudAppBar Elevation="2" Color="Color.Primary">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-2" Style="font-weight:700;">PHCIS Clinic Booking</MudText>
+        <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Class="ml-2 mr-1" />
+        <MudText Typo="Typo.h6" Style="font-weight:700;">PHCIS Clinic Booking</MudText>
         <MudSpacer />
         @if (_isAuthenticated)
         {
             <MudButton Color="Color.Inherit" OnClick="@(() => Navigation.NavigateTo("/my-appointments"))">My Appointments</MudButton>
+            <MudTooltip Text="Edit My Profile & Photo">
+                <MudIconButton OnClick="@(() => Navigation.NavigateTo("/profile"))" Class="ml-1">
+                    <MudAvatar Size="Size.Small" Color="Color.Secondary">
+                        @if (!string.IsNullOrEmpty(_patient?.ProfileImageUrl))
+                        {
+                            <MudImage Src="@_patient.ProfileImageUrl" Alt="Avatar" Style="width:100%;height:100%;object-fit:cover;" />
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                        }
+                    </MudAvatar>
+                </MudIconButton>
+            </MudTooltip>
             <MudButton Color="Color.Inherit" Variant="Variant.Outlined" Class="ml-2" OnClick="LogoutAsync">Sign Out</MudButton>
         }
         else
@@ -31,10 +47,19 @@
 @code {
     private bool _drawerOpen = true;
     private bool _isAuthenticated;
+    private PatientDto? _patient;
 
     protected override async Task OnInitializedAsync()
     {
         _isAuthenticated = await AuthService.IsAuthenticatedAsync();
+        if (_isAuthenticated)
+        {
+            var patientId = await AuthService.GetPatientIdAsync();
+            if (patientId.HasValue && patientId.Value != Guid.Empty)
+            {
+                _patient = await PatientService.GetPatientByIdAsync(patientId.Value);
+            }
+        }
     }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
@@ -43,6 +68,7 @@
     {
         await AuthService.LogoutAsync();
         _isAuthenticated = false;
+        _patient = null;
         Navigation.NavigateTo("/", forceLoad: true);
     }
 }

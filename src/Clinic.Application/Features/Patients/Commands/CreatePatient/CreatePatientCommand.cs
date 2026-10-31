@@ -11,4 +11,5 @@ public record CreatePatientCommand(
     string Email,
     string PhoneNumber,
     DateTime DateOfBirth,
-    string IdNumber) : IRequest<Guid>;
+    string IdNumber,
+    string? ProfileImageUrl = null) : IRequest<Guid>;

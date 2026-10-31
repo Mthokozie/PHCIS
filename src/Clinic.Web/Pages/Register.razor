@@ -19,6 +19,42 @@
                 <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
             }
 
+            <!-- Profile Picture Upload & Preview -->
+            <div class="d-flex flex-column align-center mb-6">
+                <MudAvatar Style="height:96px; width:96px; font-size:2rem;" Color="Color.Primary" Class="mb-3">
+                    @if (!string.IsNullOrEmpty(_model.ProfileImageUrl))
+                    {
+                        <MudImage Src="@_model.ProfileImageUrl" Alt="Profile Preview" Style="width:100%;height:100%;object-fit:cover;" />
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+                    }
+                </MudAvatar>
+
+                <div class="d-flex gap-2 align-center">
+                    <MudFileUpload T="IBrowserFile" Accept=".jpg,.jpeg,.png,.webp" FilesChanged="OnProfileImageSelectedAsync" MaximumFileCount="1">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.PhotoCamera">
+                                @(string.IsNullOrEmpty(_model.ProfileImageUrl) ? "Upload Profile Photo (Optional)" : "Change Photo")
+                            </MudButton>
+                        </ActivatorContent>
+                    </MudFileUpload>
+
+                    @if (!string.IsNullOrEmpty(_model.ProfileImageUrl))
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => _model.ProfileImageUrl = null)" />
+                    }
+                </div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">JPG, PNG or WebP (auto-resized to 256×256)</MudText>
+            </div>
+
             <MudGrid>
                 <MudItem xs="12" sm="6">
                     <MudTextField @bind-Value="_model.FirstName" Label="First Name" Variant="Variant.Outlined" Required="true" />
@@ -67,6 +103,26 @@
     private DateTime? _dob = new DateTime(1990, 1, 1);
     private string? _errorMessage;
     private bool _isSubmitting;
+
+    private async Task OnProfileImageSelectedAsync(IBrowserFile? file)
+    {
+        if (file is null)
+            return;
+
+        try
+        {
+            var resizedFile = await file.RequestImageFileAsync("image/jpeg", 256, 256);
+            using var stream = resizedFile.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            _model.ProfileImageUrl = $"data:image/jpeg;base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not process image: {ex.Message}", Severity.Warning);
+        }
+    }
 
     private async Task HandleRegisterAsync()
     {

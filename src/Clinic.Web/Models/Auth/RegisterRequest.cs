@@ -7,6 +7,7 @@ public class RegisterRequest
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string PhoneNumber { get; set; } = string.Empty;
-    public DateTime DateOfBirth { get; set; }
+    public DateTime DateOfBirth { get; set; } = DateTime.Today.AddYears(-25);
     public string IdNumber { get; set; } = string.Empty;
+    public string? ProfileImageUrl { get; set; }
 }

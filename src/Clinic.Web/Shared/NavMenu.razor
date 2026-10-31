@@ -3,6 +3,10 @@
     <MudNavLink Href="/book" Icon="@Icons.Material.Filled.CalendarMonth">Book Appointment</MudNavLink>
     <MudNavLink Href="/my-appointments" Icon="@Icons.Material.Filled.EventNote">My Appointments</MudNavLink>
     <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    @if (IsAuthenticated)
+    {
+        <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">My Profile & Photo</MudNavLink>
+    }
     <MudDivider Class="my-2" />
     @if (!IsAuthenticated)
     {
