@@ -5,57 +5,76 @@
 
 <PageTitle>Sign In - PHCIS Clinic Booking</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-12">
-    <MudCard Elevation="4" Class="pa-6" Style="border-radius: 12px;">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">Sign In to PHCIS</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Access your clinic appointments and bookings</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent>
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-            }
+<div class="d-flex align-center justify-center px-4" style="min-height: 100vh;">
+    <MudContainer MaxWidth="MaxWidth.Small">
+        <MudCard Elevation="6" Class="pa-6" Style="border-radius: 16px;">
+            <MudCardHeader Class="d-flex flex-column align-center text-center pb-2">
+                <MudAvatar Color="Color.Primary" Style="height:64px; width:64px;" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Size="Size.Large" />
+                </MudAvatar>
+                <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">PHCIS Clinic Booking</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    uMkhanyakude District Primary Health Care Portal — Please sign in to continue
+                </MudText>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                }
 
-            <MudTextField @bind-Value="_model.Email"
-                          Label="Email Address"
-                          Variant="Variant.Outlined"
-                          InputType="InputType.Email"
-                          Required="true"
-                          Class="mb-4" />
+                <MudTextField @bind-Value="_model.Email"
+                              Label="Email Address"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Email"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Email"
+                              Required="true"
+                              Class="mb-4" />
 
-            <MudTextField @bind-Value="_model.Password"
-                          Label="Password"
-                          Variant="Variant.Outlined"
-                          InputType="InputType.Password"
-                          Required="true"
-                          Class="mb-4" />
-        </MudCardContent>
-        <MudCardActions Class="d-flex flex-column px-4 pb-4">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       FullWidth="true"
-                       Size="Size.Large"
-                       Disabled="@_isSubmitting"
-                       OnClick="HandleLoginAsync">
-                @(_isSubmitting ? "Signing in..." : "Sign In")
-            </MudButton>
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Secondary"
-                       Class="mt-2"
-                       OnClick="@(() => Navigation.NavigateTo("/register"))">
-                Don't have an account? Register here
-            </MudButton>
-        </MudCardActions>
-    </MudCard>
-</MudContainer>
+                <MudTextField @bind-Value="_model.Password"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                              OnAdornmentClick="@(() => _showPassword = !_showPassword)"
+                              Required="true"
+                              Class="mb-2" />
+            </MudCardContent>
+            <MudCardActions Class="d-flex flex-column px-4 pb-4">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Disabled="@_isSubmitting"
+                           OnClick="HandleLoginAsync">
+                    @(_isSubmitting ? "Signing in..." : "Sign In")
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           Class="mt-3"
+                           OnClick="@(() => Navigation.NavigateTo("/register"))">
+                    Don't have an account? Register here
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudContainer>
+</div>
 
 @code {
     private readonly LoginRequest _model = new();
     private string? _errorMessage;
     private bool _isSubmitting;
+    private bool _showPassword;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AuthService.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/dashboard", replace: true);
+        }
+    }
 
     private async Task HandleLoginAsync()
     {

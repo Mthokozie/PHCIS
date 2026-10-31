@@ -5,8 +5,9 @@
 
 <PageTitle>Patient Registration - PHCIS Clinic Booking</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8 mb-8">
-    <MudCard Elevation="4" Class="pa-6" Style="border-radius: 12px;">
+<div class="d-flex align-center justify-center px-4 py-8" style="min-height: 100vh;">
+<MudContainer MaxWidth="MaxWidth.Small">
+    <MudCard Elevation="6" Class="pa-6" Style="border-radius: 16px;">
         <MudCardHeader>
             <CardHeaderContent>
                 <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">Patient Registration</MudText>
@@ -97,6 +98,7 @@
         </MudCardActions>
     </MudCard>
 </MudContainer>
+</div>
 
 @code {
     private readonly RegisterRequest _model = new();
