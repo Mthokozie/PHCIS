@@ -37,8 +37,16 @@ public class ExceptionHandlingMiddleware
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        _logger.LogError(exception, "An exception occurred while processing {Method} {Path}",
-            context.Request.Method, context.Request.Path);
+        if (exception is DomainException or ValidationException or NotFoundException or ConflictException)
+        {
+            _logger.LogWarning("Handled business rule violation on {Method} {Path}: {Message}",
+                context.Request.Method, context.Request.Path, exception.Message);
+        }
+        else
+        {
+            _logger.LogError(exception, "An unexpected exception occurred while processing {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+        }
 
         var (statusCode, title, errors) = exception switch
         {

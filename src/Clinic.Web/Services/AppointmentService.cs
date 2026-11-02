@@ -26,7 +26,7 @@ public class AppointmentService : IAppointmentService
         }
     }
 
-    public async Task<AppointmentConfirmationDto?> BookAppointmentAsync(BookAppointmentRequest request)
+    public async Task<(bool Success, string? ErrorMessage, AppointmentConfirmationDto? Data)> BookAppointmentAsync(BookAppointmentRequest request)
     {
         try
         {
@@ -34,13 +34,16 @@ public class AppointmentService : IAppointmentService
             var response = await _httpClient.PostAsJsonAsync("api/appointments", request);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<AppointmentConfirmationDto>();
+                var data = await response.Content.ReadFromJsonAsync<AppointmentConfirmationDto>();
+                return (true, null, data);
             }
-            return null;
+
+            var err = await ExtractErrorMessageAsync(response);
+            return (false, err, null);
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            return (false, ex.Message, null);
         }
     }
 

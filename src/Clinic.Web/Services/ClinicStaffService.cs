@@ -61,8 +61,24 @@ public class ClinicStaffService : IClinicStaffService
             {
                 return (true, null);
             }
-            var err = await response.Content.ReadAsStringAsync();
-            return (false, $"Registration failed: {response.ReasonPhrase}");
+
+            var content = await response.Content.ReadAsStringAsync();
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(content);
+                if (doc.RootElement.TryGetProperty("message", out var msg))
+                {
+                    return (false, msg.GetString() ?? response.ReasonPhrase ?? "Registration failed.");
+                }
+                if (doc.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    var errorList = errors.EnumerateArray().Select(e => e.GetString()).Where(s => !string.IsNullOrEmpty(s));
+                    return (false, string.Join("; ", errorList));
+                }
+            }
+            catch { }
+
+            return (false, string.IsNullOrWhiteSpace(content) ? response.ReasonPhrase ?? "Registration failed." : content);
         }
         catch (Exception ex)
         {
