@@ -77,8 +77,14 @@ a, .btn-link {
 
 /* =========================================================
    Responsive Layout & Screen-Size Accommodations
-   (Mobile xs <600px, Tablet sm/md 600-1279px, Desktop lg/xl)
    ========================================================= */
+
+.phcis-main-content {
+    /* Push content comfortably below the fixed AppBar */
+    padding-top: calc(var(--mud-appbar-height, 64px) + 1.25rem) !important;
+    padding-bottom: 2.5rem !important;
+    min-height: 100vh;
+}
 
 .phcis-appbar-title {
     white-space: nowrap;
@@ -87,8 +93,8 @@ a, .btn-link {
 }
 
 .phcis-page-container {
-    padding-top: 1.5rem;
-    padding-bottom: 2.5rem;
+    padding-top: 0.5rem;
+    padding-bottom: 2rem;
     padding-left: 1rem;
     padding-right: 1rem;
 }
@@ -188,9 +194,14 @@ table.quickgrid tbody tr:hover {
 
 /* Tablet screens (max-width: 960px) */
 @media (max-width: 960px) {
+    .phcis-main-content {
+        padding-top: calc(var(--mud-appbar-height, 56px) + 1rem) !important;
+        padding-bottom: 2rem !important;
+    }
+
     .phcis-page-container {
-        padding-top: 1rem;
-        padding-bottom: 1.75rem;
+        padding-top: 0.25rem;
+        padding-bottom: 1.5rem;
         padding-left: 0.75rem;
         padding-right: 0.75rem;
     }
@@ -215,13 +226,18 @@ table.quickgrid tbody tr:hover {
 
 /* Mobile phones (max-width: 600px) */
 @media (max-width: 600px) {
+    .phcis-main-content {
+        padding-top: calc(var(--mud-appbar-height, 56px) + 0.75rem) !important;
+        padding-bottom: 1.5rem !important;
+    }
+
     .phcis-appbar-title {
         font-size: 1rem !important;
     }
 
     .phcis-page-container {
-        padding-top: 0.75rem;
-        padding-bottom: 1.5rem;
+        padding-top: 0.25rem;
+        padding-bottom: 1.25rem;
         padding-left: 0.5rem;
         padding-right: 0.5rem;
     }

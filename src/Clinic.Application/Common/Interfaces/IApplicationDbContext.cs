@@ -20,6 +20,9 @@ public interface IApplicationDbContext
     /// <summary>Gets the Appointments set.</summary>
     DbSet<Appointment> Appointments { get; }
 
+    /// <summary>Gets the ClinicStaff set.</summary>
+    DbSet<ClinicStaff> ClinicStaff { get; }
+
     /// <summary>Persists all pending changes asynchronously.</summary>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

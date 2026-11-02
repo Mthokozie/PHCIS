@@ -3,15 +3,18 @@ namespace Clinic.API.Controllers;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Clinic.Application.Features.ClinicStaff.Commands.CreateClinicStaff;
 using Clinic.Application.Features.Patients.Commands.CreatePatient;
+using Clinic.Domain.Enums;
 using Clinic.Infrastructure.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 /// <summary>
-/// Handles patient/staff authentication and JWT token issuance.
+/// Handles patient/staff authentication and registration.
 /// </summary>
 [EnableRateLimiting("auth")]
 public class AuthController : BaseApiController
@@ -69,6 +72,62 @@ public class AuthController : BaseApiController
         return Ok(new { message = "Registered successfully", patientId });
     }
 
+    /// <summary>Registers a new clinic staff member (Nurse, Clerk, Doctor, etc.) and creates their login credentials (Admin only).</summary>
+    [HttpPost("register-staff")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RegisterStaff([FromBody] RegisterStaffRequest request, CancellationToken ct)
+    {
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser is not null)
+        {
+            return BadRequest(new { message = "An account with this email already exists." });
+        }
+
+        // 1. Create the ClinicStaff domain entity record
+        var staffDto = await Mediator.Send(new CreateClinicStaffCommand(
+            request.ClinicId,
+            request.FirstName,
+            request.LastName,
+            request.Email,
+            request.PhoneNumber,
+            request.Role,
+            request.StaffRegistrationNumber), ct);
+
+        // 2. Create the Identity login user linked to the staff profile
+        var identityRole = request.Role == StaffRole.Manager ? "Admin" : "ClinicStaff";
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            PhoneNumber = request.PhoneNumber,
+            Role = identityRole,
+            ClinicStaffId = staffDto.Id,
+            EmailConfirmed = true
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        await _userManager.AddToRoleAsync(user, identityRole);
+        if (identityRole == "Admin")
+        {
+            await _userManager.AddToRoleAsync(user, "ClinicStaff");
+        }
+
+        return Ok(new
+        {
+            message = "Clinic staff member registered successfully",
+            staffId = staffDto.Id,
+            email = user.Email,
+            role = user.Role,
+            clinicId = staffDto.ClinicId,
+            clinicName = staffDto.ClinicName
+        });
+    }
+
     /// <summary>Authenticates a user and returns a signed JWT token.</summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -95,7 +154,8 @@ public class AuthController : BaseApiController
             expiry,
             email = user.Email,
             role = user.Role,
-            patientId = user.PatientId
+            patientId = user.PatientId,
+            clinicStaffId = user.ClinicStaffId
         });
     }
 
@@ -105,13 +165,14 @@ public class AuthController : BaseApiController
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]!));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            new Claim(ClaimTypes.Role, string.IsNullOrEmpty(user.Role) ? "Patient" : user.Role),
-            new Claim("PatientId", user.PatientId?.ToString() ?? string.Empty),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Sub, user.Id),
+            new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+            new(ClaimTypes.Role, string.IsNullOrEmpty(user.Role) ? "Patient" : user.Role),
+            new("PatientId", user.PatientId?.ToString() ?? string.Empty),
+            new("ClinicStaffId", user.ClinicStaffId?.ToString() ?? string.Empty),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
         var token = new JwtSecurityToken(
@@ -125,7 +186,7 @@ public class AuthController : BaseApiController
     }
 }
 
-/// <summary>Request payload for user registration.</summary>
+/// <summary>Request payload for patient registration.</summary>
 public record RegisterRequest(
     string FirstName,
     string LastName,
@@ -135,6 +196,17 @@ public record RegisterRequest(
     DateTime DateOfBirth,
     string IdNumber,
     string? ProfileImageUrl = null);
+
+/// <summary>Request payload for registering clinic staff (Nurse, Clerk, Doctor).</summary>
+public record RegisterStaffRequest(
+    Guid ClinicId,
+    string FirstName,
+    string LastName,
+    string Email,
+    string Password,
+    string PhoneNumber,
+    StaffRole Role,
+    string StaffRegistrationNumber);
 
 /// <summary>Request payload for user login.</summary>
 public record LoginRequest(string Email, string Password);

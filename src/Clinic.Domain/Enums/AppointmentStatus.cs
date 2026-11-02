@@ -18,5 +18,11 @@ public enum AppointmentStatus
     Completed = 3,
 
     /// <summary>The patient did not attend the appointment.</summary>
-    NoShow = 4
+    NoShow = 4,
+
+    /// <summary>The patient is currently in consultation / being processed by clinic staff.</summary>
+    InConsultation = 5,
+
+    /// <summary>The consultation resulted in a clinical referral to a district/regional hospital.</summary>
+    Referred = 6
 }

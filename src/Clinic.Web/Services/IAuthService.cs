@@ -11,4 +11,5 @@ public interface IAuthService
     Task<string?> GetTokenAsync();
     Task<string?> GetRoleAsync();
     Task<Guid?> GetPatientIdAsync();
+    Task<Guid?> GetClinicStaffIdAsync();
 }

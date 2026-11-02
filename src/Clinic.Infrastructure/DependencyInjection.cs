@@ -21,7 +21,7 @@ public static class DependencyInjection
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configuration">Application configuration used to retrieve the connection string.</param>
     /// <returns>The updated <see cref="IServiceCollection"/> for chaining.</returns>
-    public static IServiceCollection AddInfrastructure( this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Register EF Core with SQL Server using the "DefaultConnection" connection string.
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IClinicRepository, ClinicRepository>();
         services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+        services.AddScoped<IClinicStaffRepository, ClinicStaffRepository>();
 
         // Configure ASP.NET Core Identity backed by EF Core.
         services.AddIdentity<ApplicationUser, IdentityRole>()

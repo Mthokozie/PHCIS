@@ -28,6 +28,7 @@ public class MappingProfile : Profile
             .ForMember(d => d.ClinicName, opt => opt.MapFrom(s => s.Clinic != null ? s.Clinic.Name : string.Empty))
             .ForMember(d => d.SlotStartTime, opt => opt.MapFrom(s => s.TimeSlot != null ? s.TimeSlot.StartTime : DateTime.MinValue))
             .ForMember(d => d.SlotEndTime, opt => opt.MapFrom(s => s.TimeSlot != null ? s.TimeSlot.EndTime : DateTime.MinValue))
+            .ForMember(d => d.AttendingStaffName, opt => opt.MapFrom(s => s.AttendingStaff != null ? s.AttendingStaff.FullName : string.Empty))
             .ForMember(d => d.Status, opt => opt.MapFrom(s => s.Status.ToString()));
 
         CreateMap<Appointment, AppointmentConfirmationDto>()
@@ -37,5 +38,10 @@ public class MappingProfile : Profile
             .ForMember(d => d.SlotStartTime, opt => opt.MapFrom(s => s.TimeSlot != null ? s.TimeSlot.StartTime : DateTime.MinValue))
             .ForMember(d => d.SlotEndTime, opt => opt.MapFrom(s => s.TimeSlot != null ? s.TimeSlot.EndTime : DateTime.MinValue))
             .ForMember(d => d.Message, opt => opt.MapFrom(s => $"Appointment confirmed! Reference code: {s.ConfirmationCode}"));
+
+        CreateMap<ClinicStaff, ClinicStaffDto>()
+            .ForMember(d => d.ClinicName, opt => opt.MapFrom(s => s.Clinic != null ? s.Clinic.Name : string.Empty))
+            .ForMember(d => d.FullName, opt => opt.MapFrom(s => s.FullName))
+            .ForMember(d => d.Role, opt => opt.MapFrom(s => s.Role.ToString()));
     }
 }

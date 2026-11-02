@@ -1,0 +1,213 @@
+@page "/admin/staff"
+@using Clinic.Web.Models
+@using Clinic.Web.Models.Staff
+@inject IClinicStaffService ClinicStaffService
+@inject IClinicService ClinicService
+@inject ISnackbar Snackbar
+
+<PageTitle>Manage Clinic Staff - PHCIS</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="phcis-page-container mt-4">
+    <div class="d-flex justify-space-between align-center flex-wrap gap-4 mb-4">
+        <div>
+            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight:700;">
+                <MudIcon Icon="@Icons.Material.Filled.Badge" Class="mr-2" />
+                Clinic Staff Management
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Register and view internal health personnel (Nurses, Clerks, Doctors) assigned to clinics
+            </MudText>
+        </div>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="@(() => _showRegisterDialog = true)">
+            Onboard New Staff Member
+        </MudButton>
+    </div>
+
+    <div class="mb-4" style="max-width: 320px;">
+        <MudSelect T="Guid" Label="Filter by Clinic" Value="_selectedClinicId" ValueChanged="OnClinicFilterChangedAsync"
+                   Variant="Variant.Outlined" Margin="Margin.Dense">
+            @foreach (var c in _clinics)
+            {
+                <MudSelectItem Value="@c.Id">@c.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudCard Elevation="2">
+            <MudTable Items="_staffList" Hover="true" Dense="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>Full Name</MudTh>
+                    <MudTh>Clinic</MudTh>
+                    <MudTh>Professional Role</MudTh>
+                    <MudTh>Registration / Staff No.</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Phone</MudTh>
+                    <MudTh>Status</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Full Name"><b>@context.FullName</b></MudTd>
+                    <MudTd DataLabel="Clinic">@context.ClinicName</MudTd>
+                    <MudTd DataLabel="Role">
+                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">@context.Role</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Reg No."><code>@context.StaffRegistrationNumber</code></MudTd>
+                    <MudTd DataLabel="Email">@context.Email</MudTd>
+                    <MudTd DataLabel="Phone">@context.PhoneNumber</MudTd>
+                    <MudTd DataLabel="Status">
+                        @if (context.IsActive)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Inactive</MudChip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudCard>
+    }
+
+    @* Register Staff Dialog *@
+    <MudDialog @bind-Visible="_showRegisterDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true }">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Register Internal Staff or Admin</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudGrid Spacing="2">
+                <MudItem xs="12">
+                    <MudSelect T="Guid" Label="Assigned Clinic" @bind-Value="_newStaff.ClinicId" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                        @foreach (var c in _clinics)
+                        {
+                            <MudSelectItem Value="@c.Id">@c.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_newStaff.FirstName" Label="First Name" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_newStaff.LastName" Label="Last Name" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_newStaff.Email" Label="Official Email Address" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_newStaff.Password" Label="Initial Password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_newStaff.PhoneNumber" Label="Contact Phone" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" Label="Professional Role & Permissions" @bind-Value="_newStaff.Role" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        <MudSelectItem Value="0">Nurse (ClinicStaff Role)</MudSelectItem>
+                        <MudSelectItem Value="1">Clerk (ClinicStaff Role)</MudSelectItem>
+                        <MudSelectItem Value="2">Doctor (ClinicStaff Role)</MudSelectItem>
+                        <MudSelectItem Value="3">Clinic Manager (Admin Role)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_newStaff.StaffRegistrationNumber" Label="Registration / License Number (e.g. SANC-2024-XXXX, MP-12345, ADM-01)" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                </MudItem>
+            </MudGrid>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => _showRegisterDialog = false)">Cancel</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SubmitRegisterStaffAsync" Disabled="@_isSubmitting">
+                @if (_isSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Registering...</span>
+                }
+                else
+                {
+                    <span>Register User</span>
+                }
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+</MudContainer>
+
+@code {
+    private List<ClinicDto> _clinics = new();
+    private Guid _selectedClinicId;
+    private List<ClinicStaffDto> _staffList = new();
+    private bool _loading = true;
+
+    private bool _showRegisterDialog;
+    private bool _isSubmitting;
+    private RegisterStaffRequest _newStaff = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _clinics = await ClinicService.GetAllClinicsAsync();
+        if (_clinics.Any())
+        {
+            _selectedClinicId = _clinics.First().Id;
+            _newStaff.ClinicId = _selectedClinicId;
+            await LoadStaffAsync();
+        }
+        _loading = false;
+    }
+
+    private async Task OnClinicFilterChangedAsync(Guid clinicId)
+    {
+        _selectedClinicId = clinicId;
+        await LoadStaffAsync();
+    }
+
+    private async Task LoadStaffAsync()
+    {
+        if (_selectedClinicId != Guid.Empty)
+        {
+            _staffList = await ClinicStaffService.GetStaffByClinicAsync(_selectedClinicId);
+        }
+    }
+
+    private async Task SubmitRegisterStaffAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newStaff.FirstName) ||
+            string.IsNullOrWhiteSpace(_newStaff.LastName) ||
+            string.IsNullOrWhiteSpace(_newStaff.Email) ||
+            string.IsNullOrWhiteSpace(_newStaff.Password) ||
+            string.IsNullOrWhiteSpace(_newStaff.StaffRegistrationNumber))
+        {
+            Snackbar.Add("Please fill in all required fields.", Severity.Warning);
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            var (success, error) = await ClinicStaffService.RegisterStaffAsync(_newStaff);
+            if (success)
+            {
+                Snackbar.Add($"Staff member {_newStaff.FirstName} {_newStaff.LastName} registered successfully.", Severity.Success);
+                _showRegisterDialog = false;
+                _newStaff = new RegisterStaffRequest { ClinicId = _selectedClinicId };
+                await LoadStaffAsync();
+            }
+            else
+            {
+                Snackbar.Add(error ?? "Registration failed.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Registration error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+}

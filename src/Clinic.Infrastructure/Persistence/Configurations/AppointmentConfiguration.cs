@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 /// <summary>
 /// EF Core entity type configuration for the <see cref="Appointment"/> entity.
-/// Maps to the "Appointments" table.  All FK deletions are restricted to protect healthcare records.
+/// Maps to the "Appointments" table. All FK deletions are restricted to protect healthcare records.
 /// </summary>
 public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
 {
@@ -27,9 +27,21 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
         builder.HasIndex(a => a.ConfirmationCode)
             .IsUnique();
 
-        // Status enum is stored as int by EF Core convention; no extra conversion needed.
+        // Status enum is stored as int
         builder.Property(a => a.Status)
             .HasConversion<int>();
+
+        builder.Property(a => a.ConsultationNotes)
+            .HasMaxLength(2000);
+
+        builder.Property(a => a.ReferralHospital)
+            .HasMaxLength(200);
+
+        builder.Property(a => a.ReferralReason)
+            .HasMaxLength(1000);
+
+        builder.Property(a => a.CancellationReason)
+            .HasMaxLength(500);
 
         // All relationships use Restrict to preserve appointment history.
         builder.HasOne(a => a.Patient)
@@ -45,6 +57,11 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
         builder.HasOne(a => a.TimeSlot)
             .WithMany(ts => ts.Appointments)
             .HasForeignKey(a => a.TimeSlotId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(a => a.AttendingStaff)
+            .WithMany(s => s.ProcessedAppointments)
+            .HasForeignKey(a => a.AttendingStaffId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

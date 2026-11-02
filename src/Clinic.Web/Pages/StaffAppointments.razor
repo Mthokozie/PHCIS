@@ -1,0 +1,767 @@
+@page "/staff/appointments"
+@using Clinic.Web.Models
+@using Clinic.Web.Models.Appointments
+@using Clinic.Web.Models.Staff
+@inject IAppointmentService AppointmentService
+@inject IClinicService ClinicService
+@inject IClinicStaffService ClinicStaffService
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+
+<PageTitle>Clinic Appointments Processing - PHCIS</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="phcis-page-container mt-4">
+    <div class="d-flex justify-space-between align-center flex-wrap gap-4 mb-4">
+        <div>
+            <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight:700;">
+                <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Class="mr-2" />
+                Clinic Queue & Consultations
+            </MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @if (_currentStaff != null)
+                {
+                    <span>Logged in as <b>@_currentStaff.FullName</b> (@_currentStaff.Role) • Facility: <b>@_currentStaff.ClinicName</b></span>
+                }
+                else
+                {
+                    <span>Select a clinic to view and process patient visits</span>
+                }
+            </MudText>
+        </div>
+
+        <div class="d-flex align-center gap-3">
+            <MudSelect T="Guid" Label="Active Clinic" Value="_selectedClinicId" ValueChanged="OnClinicSelectedAsync"
+                       Variant="Variant.Outlined" Margin="Margin.Dense" Style="min-width: 250px;">
+                @foreach (var c in _clinics)
+                {
+                    <MudSelectItem Value="@c.Id">@c.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAppointmentsAsync">
+                Refresh
+            </MudButton>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else
+    {
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            <MudTabPanel Text="@($"Incoming / Queue ({_appointments.Count(a => a.Status == "Pending" || a.Status == "Confirmed")})")" Icon="@Icons.Material.Filled.PendingActions">
+                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "Pending" || a.Status == "Confirmed").ToList())
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"In Consultation ({_appointments.Count(a => a.Status == "InConsultation")})")" Icon="@Icons.Material.Filled.MedicalServices">
+                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "InConsultation").ToList())
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Completed ({_appointments.Count(a => a.Status == "Completed")})")" Icon="@Icons.Material.Filled.CheckCircle">
+                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "Completed").ToList())
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Hospital Referrals ({_appointments.Count(a => a.Status == "Referred")})")" Icon="@Icons.Material.Filled.LocalHospital">
+                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "Referred").ToList())
+            </MudTabPanel>
+
+            <MudTabPanel Text="All Visits" Icon="@Icons.Material.Filled.ListAlt">
+                @RenderAppointmentsTable(_appointments)
+            </MudTabPanel>
+        </MudTabs>
+    }
+
+    @* Consultation Notes Workspace Dialog (During Consultation) *@
+    <MudDialog @bind-Visible="_showConsultationDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true }">
+        <TitleContent>
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.MedicalServices" Color="Color.Info" Class="mr-2" />
+                <MudText Typo="Typo.h6">Active Consultation & Clinical Notes</MudText>
+            </div>
+        </TitleContent>
+        <DialogContent>
+            @if (_activeAppointment != null)
+            {
+                <MudPaper Class="pa-3 mb-3" Elevation="0" Outlined="true" Style="background-color: var(--mud-palette-background-grey);">
+                    <div class="d-flex justify-space-between align-start flex-wrap gap-2">
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">
+                                Patient: @_activeAppointment.PatientName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                Booking Ref: <b>@_activeAppointment.ConfirmationCode</b> • Time: @_activeAppointment.SlotStartTime.ToString("ddd, dd MMM HH:mm")
+                            </MudText>
+                            <div class="mt-1">
+                                <MudText Typo="Typo.body2">
+                                    <b>Reason for Visit:</b> @(!string.IsNullOrEmpty(_activeAppointment.Reason) ? _activeAppointment.Reason : "Routine visit")
+                                </MudText>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">In Consultation</MudChip>
+                            @if (_lastNotesSavedAt.HasValue)
+                            {
+                                <div>
+                                    <MudText Typo="Typo.caption" Color="Color.Success">
+                                        <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" /> Saved at @_lastNotesSavedAt.Value.ToString("HH:mm:ss")
+                                    </MudText>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </MudPaper>
+
+                <div class="mb-2">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1 d-block">Quick Note Templates (Click to insert):</MudText>
+                    <div class="d-flex flex-wrap gap-1">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => InsertNoteTemplate("vitals"))">
+                            + Vitals
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => InsertNoteTemplate("complaint"))">
+                            + Complaint & History
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => InsertNoteTemplate("exam"))">
+                            + Physical Exam
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => InsertNoteTemplate("diagnosis"))">
+                            + Assessment / Diagnosis
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => InsertNoteTemplate("treatment"))">
+                            + Treatment / Rx
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => InsertNoteTemplate("plan"))">
+                            + Follow-up Plan
+                        </MudButton>
+                    </div>
+                </div>
+
+                <MudTextField @bind-Value="_consultationNotes"
+                              Label="Consultation Clinical Notes"
+                              Lines="8"
+                              Variant="Variant.Outlined"
+                              Placeholder="Write clinical findings, symptoms, diagnosis, medication prescribed, and patient instructions here during the consultation..."
+                              Immediate="true"
+                              HelperText="Notes can be saved as a draft at any time or finalized upon completion." />
+            }
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseConsultationDialog">Close</MudButton>
+            
+            <MudButton Color="Color.Primary" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SaveConsultationNotesAsync" Disabled="@_isSubmittingAction">
+                @if (_isSubmittingAction)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <span>Save Notes</span>
+                }
+            </MudButton>
+
+            <MudButton Color="Color.Secondary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.LocalHospital"
+                       OnClick="SwitchToReferralFromWorkspace" Disabled="@_isSubmittingAction">
+                Refer to Hospital
+            </MudButton>
+
+            <MudButton Color="Color.Success" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.CheckCircle"
+                       OnClick="SubmitCompleteFromWorkspaceAsync" Disabled="@_isSubmittingAction">
+                Complete Consultation
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    @* Dialog for Complete Consultation (Quick action from table) *@
+    <MudDialog @bind-Visible="_showCompleteDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true }">
+        <TitleContent>
+            <MudText Typo="Typo.h6">Complete Consultation</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                Recording clinical completion for Patient: <b>@_activeAppointment?.PatientName</b>
+            </MudText>
+            <MudTextField @bind-Value="_consultationNotes" Label="Consultation Summary / Clinical Notes"
+                          Lines="5" Variant="Variant.Outlined" Placeholder="e.g. Vitals normal, medication dispensed..." />
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseCompleteDialog">Cancel</MudButton>
+            <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="SubmitCompleteAsync" Disabled="@_isSubmittingAction">
+                @if (_isSubmittingAction)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <span>Mark as Completed</span>
+                }
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    @* Dialog for Hospital Referral *@
+    <MudDialog @bind-Visible="_showReferralDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true }">
+        <TitleContent>
+            <MudText Typo="Typo.h6" Color="Color.Secondary">Refer Patient to Hospital</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                Issuing referral transfer for Patient: <b>@_activeAppointment?.PatientName</b>
+            </MudText>
+            <MudTextField @bind-Value="_referralHospital" Label="Destination Hospital"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3"
+                          Placeholder="e.g. Mosvold District Hospital / Mseleni Hospital" />
+
+            <MudTextField @bind-Value="_referralReason" Label="Clinical Referral Reason"
+                          Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3"
+                          Placeholder="e.g. Acute surgical abdomen, severe hypertension..." />
+
+            <MudTextField @bind-Value="_consultationNotes" Label="Transfer Notes / Clinical Summary"
+                          Lines="4" Variant="Variant.Outlined"
+                          Placeholder="e.g. Clinical history, vitals, transport arranged, medication administered..." />
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseReferralDialog">Cancel</MudButton>
+            <MudButton Color="Color.Secondary" Variant="Variant.Filled" OnClick="SubmitReferralAsync" Disabled="@_isSubmittingAction">
+                @if (_isSubmittingAction)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Submitting...</span>
+                }
+                else
+                {
+                    <span>Issue Hospital Referral</span>
+                }
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+
+    @* Dialog for Viewing Notes (Read-Only) *@
+    <MudDialog @bind-Visible="_showViewNotesDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true }">
+        <TitleContent>
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Description" Color="Color.Primary" Class="mr-2" />
+                <MudText Typo="Typo.h6">Consultation Record</MudText>
+            </div>
+        </TitleContent>
+        <DialogContent>
+            @if (_activeAppointment != null)
+            {
+                <MudPaper Class="pa-3 mb-3" Elevation="0" Outlined="true">
+                    <div class="d-flex justify-space-between align-start">
+                        <div>
+                            <MudText Typo="Typo.subtitle1" Style="font-weight:600;">@_activeAppointment.PatientName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Ref: @_activeAppointment.ConfirmationCode • Visit: @_activeAppointment.SlotStartTime.ToString("ddd, dd MMM yyyy HH:mm")</MudText>
+                        </div>
+                        <MudChip T="string" Color="@(_activeAppointment.Status == "Completed" ? Color.Success : (_activeAppointment.Status == "Referred" ? Color.Secondary : Color.Default))" Size="Size.Small">
+                            @_activeAppointment.Status
+                        </MudChip>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_activeAppointment.Reason))
+                    {
+                        <div class="mt-2">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Initial Reason for Visit:</MudText>
+                            <MudText Typo="Typo.body2">@_activeAppointment.Reason</MudText>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_activeAppointment.AttendingStaffName))
+                    {
+                        <div class="mt-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Attending Staff:</MudText>
+                            <MudText Typo="Typo.body2">@_activeAppointment.AttendingStaffName</MudText>
+                        </div>
+                    }
+
+                    @if (_activeAppointment.Status == "Referred" && !string.IsNullOrEmpty(_activeAppointment.ReferralHospital))
+                    {
+                        <MudDivider Class="my-2" />
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="my-2">
+                            <b>Referred to:</b> @_activeAppointment.ReferralHospital<br />
+                            <b>Reason:</b> @_activeAppointment.ReferralReason
+                        </MudAlert>
+                    }
+                </MudPaper>
+
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Clinical Notes:</MudText>
+                @if (string.IsNullOrWhiteSpace(_activeAppointment.ConsultationNotes))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary"><i>No clinical notes were recorded for this visit.</i></MudText>
+                }
+                else
+                {
+                    <MudPaper Class="pa-3" Elevation="0" Outlined="true" Style="background-color: var(--mud-palette-background-grey); white-space: pre-wrap; font-family: monospace; font-size: 0.9rem;">
+                        @_activeAppointment.ConsultationNotes
+                    </MudPaper>
+                }
+            }
+        </DialogContent>
+        <DialogActions>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => _showViewNotesDialog = false)">Close</MudButton>
+        </DialogActions>
+    </MudDialog>
+</MudContainer>
+
+@code {
+    private List<ClinicDto> _clinics = new();
+    private Guid _selectedClinicId;
+    private List<AppointmentDto> _appointments = new();
+    private ClinicStaffDto? _currentStaff;
+    private bool _loading = true;
+    private bool _isSubmittingAction = false;
+    private int _activeTabIndex = 0;
+
+    private AppointmentDto? _activeAppointment;
+    private bool _showConsultationDialog;
+    private bool _showCompleteDialog;
+    private bool _showReferralDialog;
+    private bool _showViewNotesDialog;
+    private string? _consultationNotes;
+    private string _referralHospital = string.Empty;
+    private string _referralReason = string.Empty;
+    private DateTime? _lastNotesSavedAt;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _clinics = await ClinicService.GetAllClinicsAsync();
+
+        var staffId = await AuthService.GetClinicStaffIdAsync();
+        if (staffId.HasValue && staffId.Value != Guid.Empty)
+        {
+            _currentStaff = await ClinicStaffService.GetStaffByIdAsync(staffId.Value);
+            if (_currentStaff != null)
+            {
+                _selectedClinicId = _currentStaff.ClinicId;
+            }
+        }
+
+        if (_selectedClinicId == Guid.Empty && _clinics.Any())
+        {
+            _selectedClinicId = _clinics.First().Id;
+        }
+
+        await LoadAppointmentsAsync();
+        _loading = false;
+    }
+
+    private async Task OnClinicSelectedAsync(Guid clinicId)
+    {
+        _selectedClinicId = clinicId;
+        await LoadAppointmentsAsync();
+    }
+
+    private async Task LoadAppointmentsAsync()
+    {
+        if (_selectedClinicId != Guid.Empty)
+        {
+            _appointments = await AppointmentService.GetClinicAppointmentsAsync(_selectedClinicId);
+        }
+    }
+
+    private RenderFragment RenderAppointmentsTable(List<AppointmentDto> items) => __builder =>
+    {
+        if (items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Normal" Class="my-2">No appointments found in this status category.</MudAlert>
+            return;
+        }
+
+        <MudTable Items="items" Hover="true" Elevation="0" Dense="true" Class="mt-2">
+            <HeaderContent>
+                <MudTh>Time</MudTh>
+                <MudTh>Ref Code</MudTh>
+                <MudTh>Patient</MudTh>
+                <MudTh>Reason</MudTh>
+                <MudTh>Attending Staff</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh Style="text-align:right;">Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Time">@context.SlotStartTime.ToString("ddd, dd MMM HH:mm")</MudTd>
+                <MudTd DataLabel="Ref Code"><b>@context.ConfirmationCode</b></MudTd>
+                <MudTd DataLabel="Patient">@context.PatientName</MudTd>
+                <MudTd DataLabel="Reason">@context.Reason</MudTd>
+                <MudTd DataLabel="Attending Staff">@(string.IsNullOrEmpty(context.AttendingStaffName) ? "—" : context.AttendingStaffName)</MudTd>
+                <MudTd DataLabel="Status">
+                    @switch (context.Status)
+                    {
+                        case "InConsultation":
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small">In Consultation</MudChip>
+                            break;
+                        case "Confirmed":
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small">Confirmed</MudChip>
+                            break;
+                        case "Completed":
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small">Completed</MudChip>
+                            break;
+                        case "Referred":
+                            <MudChip T="string" Color="Color.Secondary" Size="Size.Small">Referred to Hospital</MudChip>
+                            break;
+                        case "Cancelled":
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small">Cancelled</MudChip>
+                            break;
+                        default:
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small">@context.Status</MudChip>
+                            break;
+                    }
+                </MudTd>
+                <MudTd Style="text-align:right;">
+                    @if (context.Status == "Pending")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Class="mr-1"
+                                   OnClick="@(() => OnAcceptAppointmentAsync(context))">
+                            Accept
+                        </MudButton>
+                    }
+                    @if (context.Status == "Pending" || context.Status == "Confirmed")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Info" Class="mr-1"
+                                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                                   OnClick="@(() => OnStartProcessAsync(context))">
+                            Process
+                        </MudButton>
+                    }
+                    else if (context.Status == "InConsultation")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Info" Class="mr-1"
+                                   StartIcon="@Icons.Material.Filled.EditNote"
+                                   OnClick="@(() => OpenConsultationWorkspace(context))">
+                            Write Notes
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" Class="mr-1"
+                                   OnClick="@(() => OpenCompleteDialog(context))">
+                            Complete
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary" Class="mr-1"
+                                   OnClick="@(() => OpenReferralDialog(context))">
+                            Refer
+                        </MudButton>
+                    }
+                    else if (context.Status == "Completed" || context.Status == "Referred")
+                    {
+                        @if (!string.IsNullOrEmpty(context.ConsultationNotes) || !string.IsNullOrEmpty(context.ReferralHospital))
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                       StartIcon="@Icons.Material.Filled.Description"
+                                       OnClick="@(() => OpenViewNotesDialog(context))">
+                                View Notes
+                            </MudButton>
+                        }
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    };
+
+    private async Task<Guid> GetActiveStaffIdAsync()
+    {
+        if (_currentStaff != null) return _currentStaff.Id;
+        var staffId = await AuthService.GetClinicStaffIdAsync();
+        if (staffId.HasValue && staffId.Value != Guid.Empty)
+        {
+            return staffId.Value;
+        }
+
+        // Fallback for Admin or users without direct staff link: lookup active clinic staff for selected clinic
+        if (_selectedClinicId != Guid.Empty)
+        {
+            var clinicStaffMembers = await ClinicStaffService.GetStaffByClinicAsync(_selectedClinicId);
+            var active = clinicStaffMembers.FirstOrDefault(s => s.IsActive);
+            if (active != null)
+            {
+                return active.Id;
+            }
+        }
+
+        return Guid.Empty;
+    }
+
+    private async Task OnAcceptAppointmentAsync(AppointmentDto appt)
+    {
+        var staffId = await GetActiveStaffIdAsync();
+        if (staffId == Guid.Empty)
+        {
+            Snackbar.Add("Please log in as a staff member with an assigned staff profile.", Severity.Warning);
+            return;
+        }
+
+        var (success, error, _) = await AppointmentService.AcceptAppointmentAsync(appt.Id, staffId);
+        if (success)
+        {
+            Snackbar.Add($"Appointment {appt.ConfirmationCode} accepted.", Severity.Success);
+            await LoadAppointmentsAsync();
+        }
+        else
+        {
+            Snackbar.Add(error ?? "Failed to accept appointment.", Severity.Error);
+        }
+    }
+
+    private async Task OnStartProcessAsync(AppointmentDto appt)
+    {
+        var staffId = await GetActiveStaffIdAsync();
+        if (staffId == Guid.Empty)
+        {
+            Snackbar.Add("Please log in as a staff member with an assigned staff profile.", Severity.Warning);
+            return;
+        }
+
+        var (success, error, data) = await AppointmentService.ProcessAppointmentAsync(appt.Id, staffId);
+        if (success)
+        {
+            Snackbar.Add($"Consultation started for {appt.PatientName}.", Severity.Info);
+            await LoadAppointmentsAsync();
+            _activeTabIndex = 1; // Switch to "In Consultation" tab
+            var active = _appointments.FirstOrDefault(a => a.Id == appt.Id) ?? data ?? appt;
+            OpenConsultationWorkspace(active);
+        }
+        else
+        {
+            Snackbar.Add(error ?? "Failed to start processing consultation.", Severity.Error);
+        }
+    }
+
+    private void OpenConsultationWorkspace(AppointmentDto appt)
+    {
+        _activeAppointment = appt;
+        _consultationNotes = appt.ConsultationNotes ?? string.Empty;
+        _lastNotesSavedAt = null;
+        _showConsultationDialog = true;
+    }
+
+    private void InsertNoteTemplate(string templateType)
+    {
+        var snippet = templateType switch
+        {
+            "vitals" => "\n[Vitals: BP: 120/80 mmHg | Pulse: 72 bpm | Temp: 36.8°C | SpO2: 98% | Weight: kg]\n",
+            "complaint" => "\n[Chief Complaint & History: ]\n",
+            "exam" => "\n[Physical Examination: General condition satisfactory. ]\n",
+            "diagnosis" => "\n[Assessment & Diagnosis: ]\n",
+            "treatment" => "\n[Prescription & Treatment Dispensed: ]\n",
+            "plan" => "\n[Follow-up Plan: Review in 2 weeks or sooner if symptoms worsen.]\n",
+            _ => "\n"
+        };
+
+        _consultationNotes = string.IsNullOrEmpty(_consultationNotes) ? snippet.TrimStart('\n') : _consultationNotes + snippet;
+    }
+
+    private async Task SaveConsultationNotesAsync()
+    {
+        if (_activeAppointment == null) return;
+
+        _isSubmittingAction = true;
+        StateHasChanged();
+
+        try
+        {
+            var staffId = await GetActiveStaffIdAsync();
+            if (staffId == Guid.Empty)
+            {
+                Snackbar.Add("Active staff profile not found. Please log in as clinic staff or select a valid clinic.", Severity.Warning);
+                return;
+            }
+
+            var (success, error, updated) = await AppointmentService.UpdateConsultationNotesAsync(
+                _activeAppointment.Id,
+                staffId,
+                _consultationNotes ?? string.Empty);
+
+            if (success)
+            {
+                _lastNotesSavedAt = DateTime.Now;
+                _activeAppointment.ConsultationNotes = _consultationNotes;
+                var found = _appointments.FirstOrDefault(a => a.Id == _activeAppointment.Id);
+                if (found != null) found.ConsultationNotes = _consultationNotes;
+                Snackbar.Add("Consultation notes saved successfully.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(error ?? "Failed to save consultation notes.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred while saving notes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSubmittingAction = false;
+            _showConsultationDialog = false; // Always close dialog so it never freezes
+            await LoadAppointmentsAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void SwitchToReferralFromWorkspace()
+    {
+        _showConsultationDialog = false;
+        if (_activeAppointment != null)
+        {
+            OpenReferralDialog(_activeAppointment);
+        }
+    }
+
+    private async Task SubmitCompleteFromWorkspaceAsync()
+    {
+        await SubmitCompleteAsync();
+    }
+
+    private void OpenCompleteDialog(AppointmentDto appt)
+    {
+        if (appt.Status != "InConsultation" && appt.Status != "Confirmed")
+        {
+            Snackbar.Add($"Cannot complete an appointment that is already {appt.Status}.", Severity.Warning);
+            return;
+        }
+
+        _activeAppointment = appt;
+        _consultationNotes = appt.ConsultationNotes ?? string.Empty;
+        _showCompleteDialog = true;
+    }
+
+    private async Task SubmitCompleteAsync()
+    {
+        if (_activeAppointment == null) return;
+
+        _isSubmittingAction = true;
+        StateHasChanged();
+
+        try
+        {
+            if (_activeAppointment.Status == "Completed" || _activeAppointment.Status == "Referred")
+            {
+                Snackbar.Add($"This appointment has already been marked as {_activeAppointment.Status}.", Severity.Info);
+                return;
+            }
+
+            var staffId = await GetActiveStaffIdAsync();
+            if (staffId == Guid.Empty)
+            {
+                Snackbar.Add("Active staff profile not found. Please log in as clinic staff.", Severity.Warning);
+                return;
+            }
+
+            var (success, error, _) = await AppointmentService.CompleteConsultationAsync(_activeAppointment.Id, staffId, _consultationNotes);
+            if (success)
+            {
+                Snackbar.Add("Consultation marked as successfully completed.", Severity.Success);
+                _activeTabIndex = 2; // Switch to "Completed" tab
+            }
+            else
+            {
+                Snackbar.Add(error ?? "Failed to mark consultation completed.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSubmittingAction = false;
+            _showCompleteDialog = false;
+            _showConsultationDialog = false;
+            await LoadAppointmentsAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void OpenReferralDialog(AppointmentDto appt)
+    {
+        if (appt.Status != "InConsultation" && appt.Status != "Confirmed")
+        {
+            Snackbar.Add($"Cannot refer an appointment that is already {appt.Status}.", Severity.Warning);
+            return;
+        }
+
+        _activeAppointment = appt;
+        _referralHospital = "Mosvold District Hospital";
+        _referralReason = string.Empty;
+        _consultationNotes = appt.ConsultationNotes ?? string.Empty;
+        _showReferralDialog = true;
+    }
+
+    private async Task SubmitReferralAsync()
+    {
+        if (_activeAppointment == null) return;
+        if (string.IsNullOrWhiteSpace(_referralHospital) || string.IsNullOrWhiteSpace(_referralReason))
+        {
+            Snackbar.Add("Please provide both destination hospital and clinical referral reason.", Severity.Warning);
+            return;
+        }
+
+        _isSubmittingAction = true;
+        StateHasChanged();
+
+        try
+        {
+            if (_activeAppointment.Status == "Completed" || _activeAppointment.Status == "Referred")
+            {
+                Snackbar.Add($"This appointment has already been marked as {_activeAppointment.Status}.", Severity.Info);
+                return;
+            }
+
+            var staffId = await GetActiveStaffIdAsync();
+            if (staffId == Guid.Empty)
+            {
+                Snackbar.Add("Active staff profile not found. Please log in as clinic staff.", Severity.Warning);
+                return;
+            }
+
+            var (success, error, _) = await AppointmentService.ReferAppointmentAsync(_activeAppointment.Id, staffId, _referralHospital, _referralReason, _consultationNotes);
+            if (success)
+            {
+                Snackbar.Add($"Patient successfully referred to {_referralHospital}.", Severity.Info);
+                _activeTabIndex = 3; // Switch to "Hospital Referrals" tab
+            }
+            else
+            {
+                Snackbar.Add(error ?? "Failed to issue hospital referral.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSubmittingAction = false;
+            _showReferralDialog = false;
+            _showConsultationDialog = false;
+            await LoadAppointmentsAsync();
+            StateHasChanged();
+        }
+    }
+
+    private void OpenViewNotesDialog(AppointmentDto appt)
+    {
+        _activeAppointment = appt;
+        _showViewNotesDialog = true;
+    }
+
+    private void CloseConsultationDialog()
+    {
+        _isSubmittingAction = false;
+        _showConsultationDialog = false;
+        StateHasChanged();
+    }
+
+    private void CloseCompleteDialog()
+    {
+        _isSubmittingAction = false;
+        _showCompleteDialog = false;
+        StateHasChanged();
+    }
+
+    private void CloseReferralDialog()
+    {
+        _isSubmittingAction = false;
+        _showReferralDialog = false;
+        StateHasChanged();
+    }
+}
