@@ -3,6 +3,7 @@
     <Project Path="src/Clinic.API/Clinic.API.csproj" />
     <Project Path="src/Clinic.Application/Clinic.Application.csproj" />
     <Project Path="src/Clinic.Domain/Clinic.Domain.csproj" />
+    <Project Path="src/Clinic.Gateway/Clinic.Gateway.csproj" />
     <Project Path="src/Clinic.Infrastructure/Clinic.Infrastructure.csproj" />
     <Project Path="src/Clinic.Web/Clinic.Web.csproj" />
   </Folder>
