@@ -72,9 +72,9 @@ public class AuthController : BaseApiController
         return Ok(new { message = "Registered successfully", patientId });
     }
 
-    /// <summary>Registers a new clinic staff member (Nurse, Clerk, Doctor, etc.) and creates their login credentials (Admin only).</summary>
+    /// <summary>Registers a new clinic staff member (Nurse, Clerk, Doctor, Manager) and creates their login credentials.</summary>
     [HttpPost("register-staff")]
-    [Authorize(Roles = "Admin")]
+    [AllowAnonymous]
     public async Task<IActionResult> RegisterStaff([FromBody] RegisterStaffRequest request, CancellationToken ct)
     {
         var existingUser = await _userManager.FindByEmailAsync(request.Email);

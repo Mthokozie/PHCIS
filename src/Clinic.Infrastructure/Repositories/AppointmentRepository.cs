@@ -61,7 +61,9 @@ public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRe
         return await DbSet.AnyAsync(
             a => a.PatientId == resolvedPatientId
               && a.TimeSlotId == timeSlotId
-              && a.Status != AppointmentStatus.Cancelled,
+              && (a.Status == AppointmentStatus.Pending
+               || a.Status == AppointmentStatus.Confirmed
+               || a.Status == AppointmentStatus.InConsultation),
             ct);
     }
 

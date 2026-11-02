@@ -1,99 +1,177 @@
 @page "/register"
+@using Clinic.Web.Models
+@using Clinic.Web.Models.Staff
 @inject IAuthService AuthService
+@inject IClinicStaffService ClinicStaffService
+@inject IClinicService ClinicService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 
-<PageTitle>Patient Registration - PHCIS Clinic Booking</PageTitle>
+<PageTitle>Registration - PHCIS Clinic System</PageTitle>
 
 <div class="d-flex align-center justify-center px-4 py-8" style="min-height: 100vh;">
 <MudContainer MaxWidth="MaxWidth.Small">
     <MudCard Elevation="6" Class="pa-6" Style="border-radius: 16px;">
         <MudCardHeader>
             <CardHeaderContent>
-                <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">Patient Registration</MudText>
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Create your PHCIS patient profile to book appointments</MudText>
+                <div class="text-center mb-2">
+                    <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight:700;">
+                        PHCIS System Registration
+                    </MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Create your account to access clinic healthcare services or staff management
+                    </MudText>
+                </div>
             </CardHeaderContent>
         </MudCardHeader>
+
         <MudCardContent>
-            @if (!string.IsNullOrEmpty(_errorMessage))
-            {
-                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-            }
-
-            <!-- Profile Picture Upload & Preview -->
-            <div class="d-flex flex-column align-center mb-6">
-                <MudAvatar Style="height:96px; width:96px; font-size:2rem;" Color="Color.Primary" Class="mb-3">
-                    @if (!string.IsNullOrEmpty(_model.ProfileImageUrl))
+            <MudTabs Elevation="1" Rounded="true" Centered="true" Class="mb-4" @bind-ActivePanelIndex="_activeTab">
+                <MudTabPanel Text="Patient (External)" Icon="@Icons.Material.Filled.Person">
+                    @if (!string.IsNullOrEmpty(_errorMessage))
                     {
-                        <MudImage Src="@_model.ProfileImageUrl" Alt="Profile Preview" Style="width:100%;height:100%;object-fit:cover;" />
+                        <MudAlert Severity="Severity.Error" Class="my-3">@_errorMessage</MudAlert>
                     }
-                    else
+
+                    <!-- Profile Picture Upload & Preview -->
+                    <div class="d-flex flex-column align-center my-4">
+                        <MudAvatar Style="height:96px; width:96px; font-size:2rem;" Color="Color.Primary" Class="mb-3">
+                            @if (!string.IsNullOrEmpty(_model.ProfileImageUrl))
+                            {
+                                <MudImage Src="@_model.ProfileImageUrl" Alt="Profile Preview" Style="width:100%;height:100%;object-fit:cover;" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+                            }
+                        </MudAvatar>
+
+                        <div class="d-flex gap-2 align-center">
+                            <MudFileUpload T="IBrowserFile" Accept=".jpg,.jpeg,.png,.webp" FilesChanged="OnProfileImageSelectedAsync" MaximumFileCount="1">
+                                <ActivatorContent>
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.PhotoCamera">
+                                        @(string.IsNullOrEmpty(_model.ProfileImageUrl) ? "Upload Profile Photo (Optional)" : "Change Photo")
+                                    </MudButton>
+                                </ActivatorContent>
+                            </MudFileUpload>
+
+                            @if (!string.IsNullOrEmpty(_model.ProfileImageUrl))
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               OnClick="@(() => _model.ProfileImageUrl = null)" />
+                            }
+                        </div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">JPG, PNG or WebP (auto-resized to 256×256)</MudText>
+                    </div>
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.FirstName" Label="First Name" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.LastName" Label="Last Name" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.Email" Label="Email Address" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Email" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.Password" Label="Password (min 6 chars, uppercase, digit, symbol)" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Password" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.PhoneNumber" Label="Phone Number" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.IdNumber" Label="National ID Number" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudDatePicker Label="Date of Birth" @bind-Date="_dob" Variant="Variant.Outlined" Margin="Margin.Dense" MaxDate="@DateTime.Today.AddDays(-1)" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <div class="mt-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Size="Size.Large"
+                                   Disabled="@_isSubmitting"
+                                   OnClick="HandleRegisterAsync">
+                            @(_isSubmitting ? "Registering..." : "Create Patient Account")
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Clinic Staff / Admin (Internal)" Icon="@Icons.Material.Filled.Badge">
+                    @if (!string.IsNullOrEmpty(_staffErrorMessage))
                     {
-                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+                        <MudAlert Severity="Severity.Error" Class="my-3">@_staffErrorMessage</MudAlert>
                     }
-                </MudAvatar>
 
-                <div class="d-flex gap-2 align-center">
-                    <MudFileUpload T="IBrowserFile" Accept=".jpg,.jpeg,.png,.webp" FilesChanged="OnProfileImageSelectedAsync" MaximumFileCount="1">
-                        <ActivatorContent>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       Size="Size.Small"
-                                       StartIcon="@Icons.Material.Filled.PhotoCamera">
-                                @(string.IsNullOrEmpty(_model.ProfileImageUrl) ? "Upload Profile Photo (Optional)" : "Change Photo")
-                            </MudButton>
-                        </ActivatorContent>
-                    </MudFileUpload>
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="my-3">
+                        Internal health workers (Nurses, Doctors, Clerks, Managers) register here to manage clinic appointments and consultations.
+                    </MudAlert>
 
-                    @if (!string.IsNullOrEmpty(_model.ProfileImageUrl))
-                    {
-                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                       Color="Color.Error"
-                                       Size="Size.Small"
-                                       OnClick="@(() => _model.ProfileImageUrl = null)" />
-                    }
-                </div>
-                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">JPG, PNG or WebP (auto-resized to 256×256)</MudText>
-            </div>
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudSelect T="Guid" Label="Assigned Clinic / Health Facility" @bind-Value="_staffModel.ClinicId" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                                @foreach (var c in _clinics)
+                                {
+                                    <MudSelectItem Value="@c.Id">@c.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_staffModel.FirstName" Label="First Name" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_staffModel.LastName" Label="Last Name" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_staffModel.Email" Label="Official / Work Email Address" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Email" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_staffModel.Password" Label="Password (min 6 chars, uppercase, digit, symbol)" Variant="Variant.Outlined" Margin="Margin.Dense" InputType="InputType.Password" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_staffModel.PhoneNumber" Label="Contact Phone" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="int" Label="Professional Role" @bind-Value="_staffModel.Role" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                <MudSelectItem Value="0">Nurse (ClinicStaff)</MudSelectItem>
+                                <MudSelectItem Value="1">Clerk (ClinicStaff)</MudSelectItem>
+                                <MudSelectItem Value="2">Doctor (ClinicStaff)</MudSelectItem>
+                                <MudSelectItem Value="3">Clinic Manager (Admin)</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_staffModel.StaffRegistrationNumber" Label="Registration / License Number (e.g. SANC-2024-XXXX, MP-12345, ADM-01)"
+                                          Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        </MudItem>
+                    </MudGrid>
 
-            <MudGrid>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_model.FirstName" Label="First Name" Variant="Variant.Outlined" Required="true" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_model.LastName" Label="Last Name" Variant="Variant.Outlined" Required="true" />
-                </MudItem>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="_model.Email" Label="Email Address" Variant="Variant.Outlined" InputType="InputType.Email" Required="true" />
-                </MudItem>
-                <MudItem xs="12">
-                    <MudTextField @bind-Value="_model.Password" Label="Password (min 6 chars, uppercase, digit, symbol)" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_model.PhoneNumber" Label="Phone Number" Variant="Variant.Outlined" Required="true" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="_model.IdNumber" Label="National ID Number" Variant="Variant.Outlined" Required="true" />
-                </MudItem>
-                <MudItem xs="12">
-                    <MudDatePicker Label="Date of Birth" @bind-Date="_dob" Variant="Variant.Outlined" MaxDate="@DateTime.Today.AddDays(-1)" />
-                </MudItem>
-            </MudGrid>
+                    <div class="mt-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   FullWidth="true"
+                                   Size="Size.Large"
+                                   Disabled="@_isSubmitting"
+                                   OnClick="HandleStaffRegisterAsync">
+                            @(_isSubmitting ? "Registering Staff..." : "Register as Clinic Staff / Admin")
+                        </MudButton>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
         </MudCardContent>
+
         <MudCardActions Class="d-flex flex-column px-4 pb-4">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       FullWidth="true"
-                       Size="Size.Large"
-                       Disabled="@_isSubmitting"
-                       OnClick="HandleRegisterAsync">
-                @(_isSubmitting ? "Registering..." : "Create Account")
-            </MudButton>
             <MudButton Variant="Variant.Text"
                        Color="Color.Secondary"
-                       Class="mt-2"
                        OnClick="@(() => Navigation.NavigateTo("/login"))">
-                Already registered? Sign In
+                Already registered? Sign In Here
             </MudButton>
         </MudCardActions>
     </MudCard>
@@ -101,10 +179,27 @@
 </div>
 
 @code {
+    private int _activeTab = 0;
     private readonly RegisterRequest _model = new();
+    private readonly RegisterStaffRequest _staffModel = new();
+    private List<ClinicDto> _clinics = new();
     private DateTime? _dob = new DateTime(1990, 1, 1);
     private string? _errorMessage;
+    private string? _staffErrorMessage;
     private bool _isSubmitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _clinics = await ClinicService.GetAllClinicsAsync();
+            if (_clinics.Any())
+            {
+                _staffModel.ClinicId = _clinics.First().Id;
+            }
+        }
+        catch { }
+    }
 
     private async Task OnProfileImageSelectedAsync(IBrowserFile? file)
     {
@@ -132,17 +227,66 @@
         _model.DateOfBirth = _dob ?? new DateTime(1990, 1, 1);
 
         _isSubmitting = true;
-        var (success, error) = await AuthService.RegisterAsync(_model);
-        if (success)
+        try
         {
-            await AuthService.LoginAsync(new LoginRequest { Email = _model.Email, Password = _model.Password });
-            Snackbar.Add("Account created and signed in!", Severity.Success);
-            Navigation.NavigateTo("/dashboard", forceLoad: true);
+            var (success, error) = await AuthService.RegisterAsync(_model);
+            if (success)
+            {
+                await AuthService.LoginAsync(new LoginRequest { Email = _model.Email, Password = _model.Password });
+                Snackbar.Add("Patient account created and signed in!", Severity.Success);
+                Navigation.NavigateTo("/dashboard", forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = error ?? "Registration failed. Please check your details.";
+            }
         }
-        else
+        finally
         {
-            _errorMessage = error ?? "Registration failed. Please check your details.";
+            _isSubmitting = false;
         }
-        _isSubmitting = false;
+    }
+
+    private async Task HandleStaffRegisterAsync()
+    {
+        _staffErrorMessage = null;
+        if (string.IsNullOrWhiteSpace(_staffModel.FirstName) ||
+            string.IsNullOrWhiteSpace(_staffModel.LastName) ||
+            string.IsNullOrWhiteSpace(_staffModel.Email) ||
+            string.IsNullOrWhiteSpace(_staffModel.Password) ||
+            string.IsNullOrWhiteSpace(_staffModel.StaffRegistrationNumber) ||
+            _staffModel.ClinicId == Guid.Empty)
+        {
+            _staffErrorMessage = "Please fill in all required fields including your assigned clinic and registration number.";
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            var (success, error) = await ClinicStaffService.RegisterStaffAsync(_staffModel);
+            if (success)
+            {
+                await AuthService.LoginAsync(new LoginRequest { Email = _staffModel.Email, Password = _staffModel.Password });
+                Snackbar.Add("Internal staff account registered and signed in!", Severity.Success);
+
+                if (_staffModel.Role == 3) // Manager / Admin
+                {
+                    Navigation.NavigateTo("/admin/staff", forceLoad: true);
+                }
+                else
+                {
+                    Navigation.NavigateTo("/staff/appointments", forceLoad: true);
+                }
+            }
+            else
+            {
+                _staffErrorMessage = error ?? "Staff registration failed. Please check your details.";
+            }
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
     }
 }

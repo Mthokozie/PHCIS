@@ -50,25 +50,36 @@
     }
     else
     {
+        <div class="mb-3">
+            <MudTextField @bind-Value="_searchTerm"
+                          Placeholder="Search appointments by patient name, confirmation code, reason, or staff..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Clearable="true"
+                          Immediate="true" />
+        </div>
+
         <MudTabs @bind-ActivePanelIndex="_activeTabIndex" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
             <MudTabPanel Text="@($"Incoming / Queue ({_appointments.Count(a => a.Status == "Pending" || a.Status == "Confirmed")})")" Icon="@Icons.Material.Filled.PendingActions">
-                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "Pending" || a.Status == "Confirmed").ToList())
+                @RenderAppointmentsTable(FilterAppointments(_appointments.Where(a => a.Status == "Pending" || a.Status == "Confirmed")), _queuePagination)
             </MudTabPanel>
 
             <MudTabPanel Text="@($"In Consultation ({_appointments.Count(a => a.Status == "InConsultation")})")" Icon="@Icons.Material.Filled.MedicalServices">
-                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "InConsultation").ToList())
+                @RenderAppointmentsTable(FilterAppointments(_appointments.Where(a => a.Status == "InConsultation")), _inConsultationPagination)
             </MudTabPanel>
 
             <MudTabPanel Text="@($"Completed ({_appointments.Count(a => a.Status == "Completed")})")" Icon="@Icons.Material.Filled.CheckCircle">
-                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "Completed").ToList())
+                @RenderAppointmentsTable(FilterAppointments(_appointments.Where(a => a.Status == "Completed")), _completedPagination)
             </MudTabPanel>
 
             <MudTabPanel Text="@($"Hospital Referrals ({_appointments.Count(a => a.Status == "Referred")})")" Icon="@Icons.Material.Filled.LocalHospital">
-                @RenderAppointmentsTable(_appointments.Where(a => a.Status == "Referred").ToList())
+                @RenderAppointmentsTable(FilterAppointments(_appointments.Where(a => a.Status == "Referred")), _referralsPagination)
             </MudTabPanel>
 
-            <MudTabPanel Text="All Visits" Icon="@Icons.Material.Filled.ListAlt">
-                @RenderAppointmentsTable(_appointments)
+            <MudTabPanel Text="@($"All Visits ({_appointments.Count})")" Icon="@Icons.Material.Filled.ListAlt">
+                @RenderAppointmentsTable(FilterAppointments(_appointments), _allVisitsPagination)
             </MudTabPanel>
         </MudTabs>
     }
@@ -325,6 +336,33 @@
     private string _referralReason = string.Empty;
     private DateTime? _lastNotesSavedAt;
 
+    private string _searchTerm = string.Empty;
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _queuePagination = new() { ItemsPerPage = 5 };
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _inConsultationPagination = new() { ItemsPerPage = 5 };
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _completedPagination = new() { ItemsPerPage = 5 };
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _referralsPagination = new() { ItemsPerPage = 5 };
+    private readonly Microsoft.AspNetCore.Components.QuickGrid.PaginationState _allVisitsPagination = new() { ItemsPerPage = 10 };
+
+    private List<AppointmentDto> FilterAppointments(IEnumerable<AppointmentDto> source)
+    {
+        if (string.IsNullOrWhiteSpace(_searchTerm))
+            return source.ToList();
+
+        return source.Where(a =>
+            a.PatientName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            a.ConfirmationCode.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            a.Reason.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrEmpty(a.AttendingStaffName) && a.AttendingStaffName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
+        ).ToList();
+    }
+
+    private async Task OnPageSizeChangedAsync(Microsoft.AspNetCore.Components.QuickGrid.PaginationState pagination, int newSize)
+    {
+        pagination.ItemsPerPage = newSize;
+        await pagination.SetCurrentPageIndexAsync(0);
+        StateHasChanged();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _loading = true;
@@ -363,7 +401,7 @@
         }
     }
 
-    private RenderFragment RenderAppointmentsTable(List<AppointmentDto> items) => __builder =>
+    private RenderFragment RenderAppointmentsTable(List<AppointmentDto> items, Microsoft.AspNetCore.Components.QuickGrid.PaginationState pagination) => __builder =>
     {
         if (items.Count == 0)
         {
@@ -371,23 +409,18 @@
             return;
         }
 
-        <MudTable Items="items" Hover="true" Elevation="0" Dense="true" Class="mt-2">
-            <HeaderContent>
-                <MudTh>Time</MudTh>
-                <MudTh>Ref Code</MudTh>
-                <MudTh>Patient</MudTh>
-                <MudTh>Reason</MudTh>
-                <MudTh>Attending Staff</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh Style="text-align:right;">Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Time">@context.SlotStartTime.ToString("ddd, dd MMM HH:mm")</MudTd>
-                <MudTd DataLabel="Ref Code"><b>@context.ConfirmationCode</b></MudTd>
-                <MudTd DataLabel="Patient">@context.PatientName</MudTd>
-                <MudTd DataLabel="Reason">@context.Reason</MudTd>
-                <MudTd DataLabel="Attending Staff">@(string.IsNullOrEmpty(context.AttendingStaffName) ? "—" : context.AttendingStaffName)</MudTd>
-                <MudTd DataLabel="Status">
+        <div class="phcis-quickgrid-wrapper mt-2">
+            <Microsoft.AspNetCore.Components.QuickGrid.QuickGrid Items="@items.AsQueryable()" Pagination="@pagination" Class="quickgrid">
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.SlotStartTime)" Format="ddd, dd MMM HH:mm" Title="Time" Sortable="true" />
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Ref Code" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<AppointmentDto>.ByAscending(a => a.ConfirmationCode))">
+                    <b>@context.ConfirmationCode</b>
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.PatientName)" Title="Patient" Sortable="true" />
+                <Microsoft.AspNetCore.Components.QuickGrid.PropertyColumn Property="@(a => a.Reason)" Title="Reason" />
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Attending Staff">
+                    @(string.IsNullOrEmpty(context.AttendingStaffName) ? "—" : context.AttendingStaffName)
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Status" Sortable="true" SortBy="@(Microsoft.AspNetCore.Components.QuickGrid.GridSort<AppointmentDto>.ByAscending(a => a.Status))">
                     @switch (context.Status)
                     {
                         case "InConsultation":
@@ -409,8 +442,8 @@
                             <MudChip T="string" Color="Color.Default" Size="Size.Small">@context.Status</MudChip>
                             break;
                     }
-                </MudTd>
-                <MudTd Style="text-align:right;">
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+                <Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn Title="Actions" Class="text-right">
                     @if (context.Status == "Pending")
                     {
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Class="mr-1"
@@ -453,9 +486,24 @@
                             </MudButton>
                         }
                     }
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+                </Microsoft.AspNetCore.Components.QuickGrid.TemplateColumn>
+            </Microsoft.AspNetCore.Components.QuickGrid.QuickGrid>
+        </div>
+
+        <div class="d-flex justify-space-between align-center mt-3 flex-wrap gap-2">
+            <Microsoft.AspNetCore.Components.QuickGrid.Paginator State="@pagination" />
+            <div class="d-flex align-center gap-2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Per page:</MudText>
+                <MudSelect T="int" Value="@pagination.ItemsPerPage"
+                           ValueChanged="@((int s) => OnPageSizeChangedAsync(pagination, s))"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Style="width: 100px;">
+                    <MudSelectItem Value="5">5</MudSelectItem>
+                    <MudSelectItem Value="10">10</MudSelectItem>
+                    <MudSelectItem Value="20">20</MudSelectItem>
+                    <MudSelectItem Value="50">50</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
     };
 
     private async Task<Guid> GetActiveStaffIdAsync()

@@ -5,7 +5,7 @@ namespace Clinic.Web.Services;
 
 public interface IAppointmentService
 {
-    Task<AppointmentConfirmationDto?> BookAppointmentAsync(BookAppointmentRequest request);
+    Task<(bool Success, string? ErrorMessage, AppointmentConfirmationDto? Data)> BookAppointmentAsync(BookAppointmentRequest request);
     Task<bool> CancelAppointmentAsync(Guid appointmentId, string reason);
     Task<List<AppointmentDto>> GetPatientAppointmentsAsync(Guid patientId);
     Task<List<AppointmentDto>> GetClinicAppointmentsAsync(Guid clinicId);

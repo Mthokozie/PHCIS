@@ -298,22 +298,37 @@
         }
 
         _isSubmitting = true;
-        var result = await AppointmentService.BookAppointmentAsync(new BookAppointmentRequest
-        {
-            PatientId = patientId.Value,
-            TimeSlotId = _selectedSlotId,
-            Reason = _reason
-        });
-        _isSubmitting = false;
+        StateHasChanged();
 
-        if (result is not null)
+        try
         {
-            _confirmation = result;
-            Snackbar.Add($"Appointment booked! Code: {result.ConfirmationCode}", Severity.Success);
+            var (success, error, result) = await AppointmentService.BookAppointmentAsync(new BookAppointmentRequest
+            {
+                PatientId = patientId.Value,
+                TimeSlotId = _selectedSlotId,
+                Reason = _reason
+            });
+
+            if (success && result is not null)
+            {
+                _confirmation = result;
+                Snackbar.Add($"Appointment booked! Code: {result.ConfirmationCode}", Severity.Success);
+            }
+            else
+            {
+                _errorMessage = error ?? "Patient already has an active booking for this time slot.";
+                Snackbar.Add(_errorMessage, Severity.Warning);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _errorMessage = "Unable to complete booking. Please verify you don't already have a booking for this slot.";
+            _errorMessage = $"An error occurred: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+            StateHasChanged();
         }
     }
 
