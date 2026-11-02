@@ -35,11 +35,14 @@ Clinic.slnx
 │   ├── Clinic.Application/             # CQRS commands/queries (MediatR), FluentValidation, AutoMapper
 │   ├── Clinic.Infrastructure/          # EF Core DbContext, SQL Server configs, Repositories, Identity, Seeder
 │   ├── Clinic.API/                     # ASP.NET Core Web API, JWT Auth, Swagger/OpenAPI, Serilog, Middleware
+│   ├── Clinic.Gateway/                 # Ocelot API Gateway (Reverse proxy, route rewriting, CORS, rate limiting)
 │   └── Clinic.Web/                     # Blazor WebAssembly SPA with MudBlazor UI components
 ├── tests/
-│   ├── Clinic.Domain.Tests/            # Domain entity & invariant unit tests (16 tests)
+│   ├── Clinic.Domain.Tests/            # Domain entity & invariant unit tests (26 tests)
 │   ├── Clinic.Application.Tests/       # CQRS handler & validator unit tests with Moq (11 tests)
 │   └── Clinic.Infrastructure.Tests/    # EF Core InMemory repository integration tests (6 tests)
+├── docs/
+│   └── architecture-target-microservices.md  # Target Microservices Architecture & Ocelot Gateway Roadmap
 ├── Dockerfile                          # Multi-stage Docker build for Clinic.API
 ├── docker-compose.yml                  # SQL Server 2022 + Clinic.API orchestration
 └── .github/workflows/ci.yml            # GitHub Actions build & test pipeline
@@ -47,7 +50,20 @@ Clinic.slnx
 
 ---
 
-## 3. Getting Started
+## 3. Microservices Architecture with Ocelot Gateway
+
+The system is transitioning from a modular monolith to a distributed microservices architecture using the **Strangler Fig Pattern**. 
+- Detailed architectural diagrams, bounded contexts, database decoupling guidelines, and migration phases are documented in:
+  👉 [**docs/architecture-target-microservices.md**](docs/architecture-target-microservices.md)
+
+### Port Allocation & Topology:
+- **API Gateway (`Clinic.Gateway`)**: `https://localhost:7000` (HTTP `5000`)
+- **Backend API (`Clinic.API`)**: `https://localhost:7193` (HTTP `5276`)
+- **Blazor WASM (`Clinic.Web`)**: `https://localhost:7054` (HTTP `5284` / `7147`)
+
+---
+
+## 4. Getting Started
 
 ### Build & Run Tests
 ```powershell
@@ -55,14 +71,23 @@ dotnet build Clinic.slnx
 dotnet test Clinic.slnx
 ```
 
-### Run the Web API (auto-seeds 3 Cape Town PHCIS clinics & 7 days of time slots in Development)
-```powershell
-dotnet run --project src/Clinic.API/Clinic.API.csproj
-```
-- Swagger UI: `https://localhost:7001/swagger`
+### Run with Visual Studio (Multiple Startup Projects)
+1. Right-click the Solution (`Clinic`) &rarr; **Properties** &rarr; **Startup Project**.
+2. Select **Multiple startup projects** and set **Start** for:
+   - `Clinic.Gateway`
+   - `Clinic.API`
+   - `Clinic.Web`
+3. Press **F5**.
 
-### Run the Blazor WASM Frontend
+### Run via .NET CLI
 ```powershell
+# 1. Start the API
+dotnet run --project src/Clinic.API/Clinic.API.csproj
+
+# 2. Start the Ocelot API Gateway
+dotnet run --project src/Clinic.Gateway/Clinic.Gateway.csproj
+
+# 3. Start the Blazor WASM Client
 dotnet run --project src/Clinic.Web/Clinic.Web.csproj
 ```
 
