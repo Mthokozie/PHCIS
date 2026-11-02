@@ -10,6 +10,7 @@ public class Clinic : BaseEntity
 {
     private readonly List<TimeSlot>    _timeSlots    = new();
     private readonly List<Appointment> _appointments = new();
+    private readonly List<ClinicStaff> _staff        = new();
 
     // -------------------------------------------------------------------------
     // Private constructor — use the factory method to create instances.
@@ -49,6 +50,9 @@ public class Clinic : BaseEntity
 
     /// <summary>Gets the read-only collection of appointments associated with this clinic.</summary>
     public IReadOnlyCollection<Appointment> Appointments => _appointments.AsReadOnly();
+
+    /// <summary>Gets the read-only collection of internal staff members assigned to this clinic.</summary>
+    public IReadOnlyCollection<ClinicStaff> Staff => _staff.AsReadOnly();
 
     // -------------------------------------------------------------------------
     // Factory

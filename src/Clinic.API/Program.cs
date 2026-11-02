@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Clinic.API.Middleware;
 using Clinic.Application;
 using Clinic.Infrastructure;
+using Clinic.Infrastructure.Identity;
 using Clinic.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -64,58 +65,63 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
     };
 
-    // Global per-IP rate limiter (100 requests per 60 seconds)
+    // Global IP rate limiter: applies to all unannotated endpoints
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ip,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                AutoReplenishment = true,
                 PermitLimit = globalPermitLimit,
-                QueueLimit = queueLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                Window = TimeSpan.FromSeconds(windowSeconds)
-            }));
+                QueueLimit = queueLimit
+            });
+    });
 
-    // Stricter policy for Authentication endpoints (10 requests per 60 seconds per IP)
+    // Stricter policy for Auth endpoints (login / register brute-force protection)
     options.AddPolicy("auth", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"auth_{ip}",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                AutoReplenishment = true,
                 PermitLimit = authPermitLimit,
-                QueueLimit = 0,
-                Window = TimeSpan.FromSeconds(windowSeconds)
-            }));
-
-    // Sliding-window policy for Appointment Booking endpoints (20 requests per 60 seconds per IP)
-    options.AddPolicy("booking", httpContext =>
-        RateLimitPartition.GetSlidingWindowLimiter(
-            partitionKey: httpContext.User.Identity?.Name
-                          ?? httpContext.Connection.RemoteIpAddress?.ToString()
-                          ?? "anonymous",
-            factory: _ => new SlidingWindowRateLimiterOptions
-            {
-                AutoReplenishment = true,
-                PermitLimit = bookingPermitLimit,
-                SegmentsPerWindow = 4,
-                QueueLimit = 2,
+                Window = TimeSpan.FromSeconds(windowSeconds),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                Window = TimeSpan.FromSeconds(windowSeconds)
-            }));
+                QueueLimit = 0
+            });
+    });
+
+    // Dedicated policy for appointment booking (prevents automated bot slot hoarding)
+    options.AddPolicy("booking", httpContext =>
+    {
+        var key = httpContext.User.Identity?.IsAuthenticated == true
+            ? httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anon"
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"booking_{key}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = bookingPermitLimit,
+                Window = TimeSpan.FromSeconds(windowSeconds),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 2
+            });
+    });
 });
 
-// Register Clean Architecture layers
+// Register Application & Infrastructure layer dependencies
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+var secret = jwtSettings["Secret"]
+    ?? throw new InvalidOperationException("JWT Secret is not configured in appsettings.");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -124,39 +130,70 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+        ValidateIssuer = true,
         ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
         ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(secretKey)
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
     };
 });
 
 builder.Services.AddAuthorization();
 
-// Configure Swagger / OpenAPI with JWT Bearer support and XML comments
+// Configure Controllers with ProblemDetails suppression for clean middleware handling
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.SuppressModelStateInvalidFilter = true;
+    });
+
+builder.Services.AddEndpointsApiExplorer();
+
+// Configure Swagger/OpenAPI with JWT Bearer support and XML documentation
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "PHCIS Clinic Booking API",
+        Title = "PHCIS Clinic Booking System API",
         Version = "v1",
-        Description = "Primary Health Care Information System (PHCIS) — Clean Architecture Clinic Booking API with Rate Limiting & JWT Auth",
-        Contact = new OpenApiContact { Name = "PHCIS Architecture Team", Email = "support@phcis.gov.za" }
+        Description = "Primary Health Care Information System (PHCIS) Clinic Booking API — Built with .NET 9, Clean Architecture, and MediatR.",
+        Contact = new OpenApiContact
+        {
+            Name = "PHCIS Development Team",
+            Email = "support@phcis.health.gov.za"
+        }
     });
 
+    // Include XML comments from Clinic.API and Clinic.Application assemblies
+    var apiXml = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var apiXmlPath = Path.Combine(AppContext.BaseDirectory, apiXml);
+    if (File.Exists(apiXmlPath))
+    {
+        c.IncludeXmlComments(apiXmlPath);
+    }
+
+    var appXml = "Clinic.Application.xml";
+    var appXmlPath = Path.Combine(AppContext.BaseDirectory, appXml);
+    if (File.Exists(appXmlPath))
+    {
+        c.IncludeXmlComments(appXmlPath);
+    }
+
+    // Configure JWT Bearer authorization in Swagger UI
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT"
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -164,18 +201,15 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
             },
             Array.Empty<string>()
         }
     });
-
-    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        c.IncludeXmlComments(xmlPath);
-    }
 });
 
 // Configure CORS for Blazor WebAssembly client
@@ -208,12 +242,13 @@ app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
 if (app.Environment.IsDevelopment())
 {
-    // Migrate and seed initial PHCIS clinics and time slots in Development
+    // Migrate and seed initial PHCIS clinics, time slots, and default users (Admin & Clinic Staff) in Development
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    await ApplicationDbContextSeed.SeedAsync(dbContext, roleManager, logger);
+    await ApplicationDbContextSeed.SeedAsync(dbContext, roleManager, userManager, logger);
 }
 
 app.UseSerilogRequestLogging();

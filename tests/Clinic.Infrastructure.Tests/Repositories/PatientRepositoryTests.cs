@@ -23,13 +23,13 @@ public class PatientRepositoryTests
         using var context = CreateInMemoryContext();
         var repo = new PatientRepository(context);
 
-        var patient = Patient.Create("John", "Doe", "john@test.com", "+2782", new DateTime(1990, 1, 1), "ID001");
+        var patient = Patient.Create("Ntokozo", "Doe", "Ntokozo@test.com", "+2782", new DateTime(1990, 1, 1), "ID001");
         context.Patients.Add(patient);
         await context.SaveChangesAsync();
 
-        var result = await repo.GetByEmailAsync("john@test.com");
+        var result = await repo.GetByEmailAsync("Ntokozo@test.com");
         result.Should().NotBeNull();
-        result!.Email.Should().Be("john@test.com");
+        result!.Email.Should().Be("Ntokozo@test.com");
     }
 
     [Fact]

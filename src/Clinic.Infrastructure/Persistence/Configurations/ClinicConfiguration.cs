@@ -50,5 +50,11 @@ public class ClinicConfiguration : IEntityTypeConfiguration<global::Clinic.Domai
             .WithOne(a => a.Clinic)
             .HasForeignKey(a => a.ClinicId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Restrict delete on ClinicStaff to preserve staff history.
+        builder.HasMany(c => c.Staff)
+            .WithOne(s => s.Clinic)
+            .HasForeignKey(s => s.ClinicId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

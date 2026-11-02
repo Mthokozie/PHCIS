@@ -29,7 +29,7 @@ public class CreatePatientCommandHandlerTests
         _mockUow.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
 
         var command = new CreatePatientCommand(
-            "Alice", "Smith", "alice@test.com", "+2781234567",
+            "Zodwa", "Zulu", "Zodwa@test.com", "+2781234567",
             new DateTime(1985, 5, 20), "8505200123456");
 
         var result = await _handler.Handle(command, default);
@@ -41,12 +41,12 @@ public class CreatePatientCommandHandlerTests
     [Fact]
     public async Task Handle_DuplicateEmail_ShouldThrowDomainException()
     {
-        var existing = Patient.Create("Bob", "Jones", "alice@test.com", "+2781", new DateTime(1980, 1, 1), "ID999");
-        _mockRepo.Setup(r => r.GetByEmailAsync("alice@test.com", default))
+        var existing = Patient.Create("Dada", "Jobe", "Zodwa@test.com", "+2781", new DateTime(1980, 1, 1), "ID999");
+        _mockRepo.Setup(r => r.GetByEmailAsync("Zodwa@test.com", default))
             .ReturnsAsync(existing);
 
         var command = new CreatePatientCommand(
-            "Alice", "Smith", "alice@test.com", "+2781234567",
+            "Zodwa", "Zulu", "Zodwa@test.com", "+2781234567",
             new DateTime(1985, 5, 20), "8505200123456");
 
         var act = () => _handler.Handle(command, default);

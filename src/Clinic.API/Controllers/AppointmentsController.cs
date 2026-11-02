@@ -1,9 +1,14 @@
 namespace Clinic.API.Controllers;
 
 using Clinic.Application.DTOs;
+using Clinic.Application.Features.Appointments.Commands.AcceptAppointment;
 using Clinic.Application.Features.Appointments.Commands.BookAppointment;
 using Clinic.Application.Features.Appointments.Commands.CancelAppointment;
+using Clinic.Application.Features.Appointments.Commands.CompleteConsultation;
+using Clinic.Application.Features.Appointments.Commands.ProcessAppointment;
+using Clinic.Application.Features.Appointments.Commands.ReferAppointmentToHospital;
 using Clinic.Application.Features.Appointments.Commands.RescheduleAppointment;
+using Clinic.Application.Features.Appointments.Commands.UpdateConsultationNotes;
 using Clinic.Application.Features.Appointments.Queries.GetAppointmentById;
 using Clinic.Application.Features.Appointments.Queries.GetClinicAppointments;
 using Clinic.Application.Features.Appointments.Queries.GetPatientAppointments;
@@ -12,7 +17,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
 /// <summary>
-/// Endpoints for booking, viewing, cancelling, and rescheduling clinic appointments.
+/// Endpoints for booking, viewing, cancelling, rescheduling, accepting, processing,
+/// completing, and hospital referral of clinic appointments.
 /// </summary>
 [Authorize]
 [EnableRateLimiting("booking")]
@@ -53,6 +59,74 @@ public class AppointmentsController : BaseApiController
         return Ok(confirmation);
     }
 
+    /// <summary>Clinic staff accepts an incoming appointment and assigns themselves.</summary>
+    [HttpPut("{id:guid}/accept")]
+    [Authorize(Roles = "Admin,ClinicStaff")]
+    public async Task<ActionResult<AppointmentDto>> Accept(
+        Guid id,
+        [FromBody] AcceptAppointmentRequest request,
+        CancellationToken ct)
+    {
+        var appointment = await Mediator.Send(new AcceptAppointmentCommand(id, request.StaffId), ct);
+        return Ok(appointment);
+    }
+
+    /// <summary>Clinic staff starts processing an appointment (commences consultation).</summary>
+    [HttpPut("{id:guid}/process")]
+    [Authorize(Roles = "Admin,ClinicStaff")]
+    public async Task<ActionResult<AppointmentDto>> Process(
+        Guid id,
+        [FromBody] ProcessAppointmentRequest request,
+        CancellationToken ct)
+    {
+        var appointment = await Mediator.Send(new ProcessAppointmentCommand(id, request.StaffId), ct);
+        return Ok(appointment);
+    }
+
+    /// <summary>Clinic staff completes a consultation and saves optional notes.</summary>
+    [HttpPut("{id:guid}/complete")]
+    [Authorize(Roles = "Admin,ClinicStaff")]
+    public async Task<ActionResult<AppointmentDto>> Complete(
+        Guid id,
+        [FromBody] CompleteConsultationRequest request,
+        CancellationToken ct)
+    {
+        var appointment = await Mediator.Send(new CompleteConsultationCommand(id, request.StaffId, request.Notes), ct);
+        return Ok(appointment);
+    }
+
+    /// <summary>Clinic staff refers the consultation to a hospital.</summary>
+    [HttpPut("{id:guid}/refer")]
+    [Authorize(Roles = "Admin,ClinicStaff")]
+    public async Task<ActionResult<AppointmentDto>> Refer(
+        Guid id,
+        [FromBody] ReferHospitalRequest request,
+        CancellationToken ct)
+    {
+        var appointment = await Mediator.Send(new ReferAppointmentToHospitalCommand(
+            id,
+            request.StaffId,
+            request.HospitalName,
+            request.ReferralReason,
+            request.Notes), ct);
+        return Ok(appointment);
+    }
+
+    /// <summary>Clinic staff updates or records clinical notes during consultation.</summary>
+    [HttpPut("{id:guid}/notes")]
+    [Authorize(Roles = "Admin,ClinicStaff")]
+    public async Task<ActionResult<AppointmentDto>> UpdateNotes(
+        Guid id,
+        [FromBody] UpdateConsultationNotesRequest request,
+        CancellationToken ct)
+    {
+        var appointment = await Mediator.Send(new UpdateConsultationNotesCommand(
+            id,
+            request.StaffId,
+            request.Notes), ct);
+        return Ok(appointment);
+    }
+
     /// <summary>Cancels an existing appointment and releases its time slot capacity.</summary>
     [HttpPut("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(
@@ -77,6 +151,21 @@ public class AppointmentsController : BaseApiController
         return Ok(confirmation);
     }
 }
+
+/// <summary>Request payload for accepting an appointment.</summary>
+public record AcceptAppointmentRequest(Guid StaffId);
+
+/// <summary>Request payload for processing an appointment.</summary>
+public record ProcessAppointmentRequest(Guid StaffId);
+
+/// <summary>Request payload for completing consultation.</summary>
+public record CompleteConsultationRequest(Guid StaffId, string? Notes = null);
+
+/// <summary>Request payload for referring consultation to hospital.</summary>
+public record ReferHospitalRequest(Guid StaffId, string HospitalName, string ReferralReason, string? Notes = null);
+
+/// <summary>Request payload for updating notes during consultation.</summary>
+public record UpdateConsultationNotesRequest(Guid StaffId, string Notes);
 
 /// <summary>Request payload for cancelling an appointment.</summary>
 public record CancelAppointmentRequest(string Reason);

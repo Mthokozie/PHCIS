@@ -99,10 +99,8 @@ public class AuthService : IAuthService
         try
         {
             var payload = ParseJwtPayload(token);
-            // Try standard role claim
             if (payload.TryGetValue("role", out var role))
                 return role.GetString();
-            // Try Microsoft-style claim
             if (payload.TryGetValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role", out var msRole))
                 return msRole.GetString();
         }
@@ -118,13 +116,11 @@ public class AuthService : IAuthService
         try
         {
             var payload = ParseJwtPayload(token);
-            // 1. Check the explicit PatientId claim issued by AuthController
             if (payload.TryGetValue("PatientId", out var patientIdClaim) && Guid.TryParse(patientIdClaim.GetString(), out var patientGuid))
                 return patientGuid;
             if (payload.TryGetValue("patientId", out var patientIdLower) && Guid.TryParse(patientIdLower.GetString(), out var patientGuidLower))
                 return patientGuidLower;
 
-            // 2. Fallback to nameid or sub claim
             if (payload.TryGetValue("nameid", out var nameid) && Guid.TryParse(nameid.GetString(), out var guid1))
                 return guid1;
             if (payload.TryGetValue("sub", out var sub) && Guid.TryParse(sub.GetString(), out var guid2))
@@ -137,6 +133,23 @@ public class AuthService : IAuthService
         return null;
     }
 
+    public async Task<Guid?> GetClinicStaffIdAsync()
+    {
+        var token = await GetTokenAsync();
+        if (string.IsNullOrEmpty(token)) return null;
+
+        try
+        {
+            var payload = ParseJwtPayload(token);
+            if (payload.TryGetValue("ClinicStaffId", out var staffIdClaim) && Guid.TryParse(staffIdClaim.GetString(), out var staffGuid))
+                return staffGuid;
+            if (payload.TryGetValue("clinicStaffId", out var staffIdLower) && Guid.TryParse(staffIdLower.GetString(), out var staffGuidLower))
+                return staffGuidLower;
+        }
+        catch { }
+        return null;
+    }
+
     private static Dictionary<string, JsonElement> ParseJwtPayload(string token)
     {
         var parts = token.Split('.');
@@ -144,7 +157,6 @@ public class AuthService : IAuthService
             throw new ArgumentException("Invalid JWT token");
 
         var payload = parts[1];
-        // Add padding if needed
         payload = payload.Replace('-', '+').Replace('_', '/');
         switch (payload.Length % 4)
         {

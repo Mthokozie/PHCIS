@@ -9,7 +9,7 @@ namespace Clinic.Domain.Entities;
 /// <summary>
 /// Represents a patient's booking for a specific clinic time slot.
 /// Encapsulates the full appointment lifecycle from pending through to
-/// completed, cancelled, or no-show.
+/// confirmed, in-consultation, completed, referred, cancelled, or no-show.
 /// </summary>
 public class Appointment : BaseEntity
 {
@@ -45,6 +45,12 @@ public class Appointment : BaseEntity
     /// <summary>Gets the time slot reserved by this appointment (navigation property).</summary>
     public TimeSlot TimeSlot { get; private set; } = null!;
 
+    /// <summary>Gets the identifier of the clinic staff member who accepted/attended this appointment, if assigned.</summary>
+    public Guid? AttendingStaffId { get; private set; }
+
+    /// <summary>Gets the attending clinic staff member navigation property.</summary>
+    public ClinicStaff? AttendingStaff { get; private set; }
+
     /// <summary>Gets the current status of the appointment.</summary>
     public AppointmentStatus Status { get; private set; }
 
@@ -59,6 +65,31 @@ public class Appointment : BaseEntity
 
     /// <summary>Gets the UTC date and time at which this appointment was booked.</summary>
     public DateTime BookedAt { get; private set; }
+
+    /// <summary>
+    /// Gets the UTC date and time at which consultation started, if processed.
+    /// </summary>
+    public DateTime? ConsultationStartedAt { get; private set; }
+
+    /// <summary>
+    /// Gets the UTC date and time at which consultation completed, if completed or referred.
+    /// </summary>
+    public DateTime? ConsultationCompletedAt { get; private set; }
+
+    /// <summary>
+    /// Gets clinical notes or consultation summary recorded by the clinic staff.
+    /// </summary>
+    public string? ConsultationNotes { get; private set; }
+
+    /// <summary>
+    /// Gets the target hospital name if the patient was referred.
+    /// </summary>
+    public string? ReferralHospital { get; private set; }
+
+    /// <summary>
+    /// Gets the clinical reason or notes for referral to the hospital.
+    /// </summary>
+    public string? ReferralReason { get; private set; }
 
     /// <summary>
     /// Gets the UTC date and time at which this appointment was cancelled,
@@ -80,14 +111,6 @@ public class Appointment : BaseEntity
     /// Creates and returns a new <see cref="Appointment"/> in <see cref="AppointmentStatus.Pending"/>
     /// status and raises an <see cref="AppointmentBookedEvent"/>.
     /// </summary>
-    /// <param name="patientId">The identifier of the booking patient.</param>
-    /// <param name="clinicId">The identifier of the target clinic.</param>
-    /// <param name="timeSlotId">The identifier of the time slot being reserved.</param>
-    /// <param name="reason">The patient's stated reason for the appointment.</param>
-    /// <returns>A newly created <see cref="Appointment"/>.</returns>
-    /// <exception cref="DomainException">
-    /// Thrown when any identifier is empty or <paramref name="reason"/> is null/whitespace.
-    /// </exception>
     public static Appointment Create(
         Guid patientId,
         Guid clinicId,
@@ -140,9 +163,6 @@ public class Appointment : BaseEntity
     /// Confirms the appointment, transitioning its status to
     /// <see cref="AppointmentStatus.Confirmed"/>.
     /// </summary>
-    /// <exception cref="DomainException">
-    /// Thrown when the appointment is not in <see cref="AppointmentStatus.Pending"/> status.
-    /// </exception>
     public void Confirm()
     {
         if (Status != AppointmentStatus.Pending)
@@ -154,14 +174,103 @@ public class Appointment : BaseEntity
     }
 
     /// <summary>
+    /// Staff accepts the incoming appointment, confirming it and assigning themselves as the attending staff member.
+    /// </summary>
+    public void AcceptByStaff(Guid staffId)
+    {
+        if (staffId == Guid.Empty)
+            throw new DomainException("Staff identifier is required.");
+
+        if (Status != AppointmentStatus.Pending && Status != AppointmentStatus.Confirmed)
+            throw new DomainException($"Cannot accept an appointment with status: {Status}.");
+
+        AttendingStaffId = staffId;
+        Status           = AppointmentStatus.Confirmed;
+        UpdatedAt        = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Staff starts processing the appointment / begins consultation with the patient.
+    /// </summary>
+    public void StartProcessing(Guid staffId)
+    {
+        if (staffId == Guid.Empty)
+            throw new DomainException("Staff identifier is required.");
+
+        if (Status != AppointmentStatus.Confirmed && Status != AppointmentStatus.Pending)
+            throw new DomainException($"Cannot process an appointment with status: {Status}.");
+
+        AttendingStaffId       = staffId;
+        Status                 = AppointmentStatus.InConsultation;
+        ConsultationStartedAt  = DateTime.UtcNow;
+        UpdatedAt              = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Updates or records clinical consultation notes while an appointment is in consultation.
+    /// </summary>
+    public void UpdateConsultationNotes(Guid staffId, string notes)
+    {
+        if (staffId == Guid.Empty)
+            throw new DomainException("Staff identifier is required.");
+
+        if (Status != AppointmentStatus.InConsultation && Status != AppointmentStatus.Confirmed)
+            throw new DomainException($"Consultation notes can only be recorded while an appointment is in consultation or confirmed. Current status: {Status}.");
+
+        AttendingStaffId  = staffId;
+        ConsultationNotes = notes?.Trim();
+        UpdatedAt         = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks the consultation as successfully completed after consultation is done well.
+    /// </summary>
+    public void MarkAsCompleted(Guid staffId, string? consultationNotes = null)
+    {
+        if (staffId == Guid.Empty)
+            throw new DomainException("Staff identifier is required.");
+
+        if (Status != AppointmentStatus.InConsultation && Status != AppointmentStatus.Confirmed)
+            throw new DomainException($"Only in-consultation or confirmed appointments can be marked as completed. Current status: {Status}.");
+
+        AttendingStaffId        = staffId;
+        Status                  = AppointmentStatus.Completed;
+        ConsultationCompletedAt = DateTime.UtcNow;
+        ConsultationNotes       = consultationNotes?.Trim();
+        UpdatedAt               = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Completes consultation by referring the patient to a district or regional hospital.
+    /// </summary>
+    public void ReferToHospital(Guid staffId, string hospitalName, string referralReason, string? notes = null)
+    {
+        if (staffId == Guid.Empty)
+            throw new DomainException("Staff identifier is required.");
+
+        if (string.IsNullOrWhiteSpace(hospitalName))
+            throw new DomainException("Referral hospital name is required.");
+
+        if (string.IsNullOrWhiteSpace(referralReason))
+            throw new DomainException("Referral reason is required.");
+
+        if (Status != AppointmentStatus.InConsultation && Status != AppointmentStatus.Confirmed)
+            throw new DomainException($"Only in-consultation or confirmed appointments can be referred to a hospital. Current status: {Status}.");
+
+        AttendingStaffId        = staffId;
+        Status                  = AppointmentStatus.Referred;
+        ReferralHospital        = hospitalName.Trim();
+        ReferralReason          = referralReason.Trim();
+        ConsultationCompletedAt = DateTime.UtcNow;
+        ConsultationNotes       = notes?.Trim();
+        UpdatedAt               = DateTime.UtcNow;
+    }
+
+    /// <summary>
     /// Cancels the appointment, transitioning its status to
     /// <see cref="AppointmentStatus.Cancelled"/> and raises an
     /// <see cref="AppointmentCancelledEvent"/>.
     /// </summary>
-    /// <param name="reason">The reason for cancellation.</param>
-    /// <exception cref="DomainException">
-    /// Thrown when the appointment is already cancelled or completed.
-    /// </exception>
     public void Cancel(string reason)
     {
         if (Status == AppointmentStatus.Cancelled)
@@ -169,6 +278,9 @@ public class Appointment : BaseEntity
 
         if (Status == AppointmentStatus.Completed)
             throw new DomainException("A completed appointment cannot be cancelled.");
+
+        if (Status == AppointmentStatus.Referred)
+            throw new DomainException("A referred appointment cannot be cancelled.");
 
         if (string.IsNullOrWhiteSpace(reason))
             throw new DomainException("A cancellation reason is required.");
@@ -187,14 +299,11 @@ public class Appointment : BaseEntity
     /// Marks the appointment as completed, transitioning its status to
     /// <see cref="AppointmentStatus.Completed"/>.
     /// </summary>
-    /// <exception cref="DomainException">
-    /// Thrown when the appointment is not in <see cref="AppointmentStatus.Confirmed"/> status.
-    /// </exception>
     public void Complete()
     {
-        if (Status != AppointmentStatus.Confirmed)
+        if (Status != AppointmentStatus.Confirmed && Status != AppointmentStatus.InConsultation)
             throw new DomainException(
-                $"Only confirmed appointments can be marked as completed. Current status: {Status}.");
+                $"Only confirmed or in-consultation appointments can be marked as completed. Current status: {Status}.");
 
         Status    = AppointmentStatus.Completed;
         UpdatedAt = DateTime.UtcNow;
@@ -204,9 +313,6 @@ public class Appointment : BaseEntity
     /// Marks the appointment as a no-show, transitioning its status to
     /// <see cref="AppointmentStatus.NoShow"/>.
     /// </summary>
-    /// <exception cref="DomainException">
-    /// Thrown when the appointment is not in <see cref="AppointmentStatus.Confirmed"/> status.
-    /// </exception>
     public void MarkAsNoShow()
     {
         if (Status != AppointmentStatus.Confirmed)

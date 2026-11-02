@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 /// <summary>
 /// EF Core implementation of <see cref="IAppointmentRepository"/>.
-/// All read operations eager-load the Patient, Clinic, and TimeSlot navigations.
+/// All read operations eager-load Patient, Clinic, TimeSlot, and AttendingStaff navigations.
 /// </summary>
 public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRepository
 {
@@ -42,6 +42,7 @@ public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRe
             .Include(a => a.Patient)
             .Include(a => a.Clinic)
             .Include(a => a.TimeSlot)
+            .Include(a => a.AttendingStaff)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
     /// <inheritdoc/>
@@ -50,6 +51,7 @@ public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRe
             .Include(a => a.Patient)
             .Include(a => a.Clinic)
             .Include(a => a.TimeSlot)
+            .Include(a => a.AttendingStaff)
             .FirstOrDefaultAsync(a => a.ConfirmationCode == confirmationCode, ct);
 
     /// <inheritdoc/>
@@ -72,6 +74,8 @@ public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRe
             .Include(a => a.Patient)
             .Include(a => a.Clinic)
             .Include(a => a.TimeSlot)
+            .Include(a => a.AttendingStaff)
+            .OrderByDescending(a => a.BookedAt)
             .ToListAsync(ct);
     }
 
@@ -82,6 +86,8 @@ public class AppointmentRepository : BaseRepository<Appointment>, IAppointmentRe
             .Include(a => a.Patient)
             .Include(a => a.Clinic)
             .Include(a => a.TimeSlot)
+            .Include(a => a.AttendingStaff)
+            .OrderBy(a => a.TimeSlot.StartTime)
             .ToListAsync(ct);
 
     /// <inheritdoc/>

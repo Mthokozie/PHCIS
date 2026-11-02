@@ -28,11 +28,15 @@ namespace Clinic.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("AttendingStaffId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("BookedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("CancellationReason")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("CancelledAt")
                         .HasColumnType("datetime2");
@@ -45,6 +49,16 @@ namespace Clinic.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<DateTime?>("ConsultationCompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ConsultationNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("ConsultationStartedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -56,6 +70,14 @@ namespace Clinic.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("ReferralHospital")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ReferralReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -66,6 +88,8 @@ namespace Clinic.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AttendingStaffId");
 
                     b.HasIndex("ClinicId");
 
@@ -128,6 +152,64 @@ namespace Clinic.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Clinics", (string)null);
+                });
+
+            modelBuilder.Entity("Clinic.Domain.Entities.ClinicStaff", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClinicId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StaffRegistrationNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClinicId");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("StaffRegistrationNumber");
+
+                    b.ToTable("ClinicStaff", (string)null);
                 });
 
             modelBuilder.Entity("Clinic.Domain.Entities.Patient", b =>
@@ -232,6 +314,9 @@ namespace Clinic.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("ClinicStaffId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -435,6 +520,11 @@ namespace Clinic.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Clinic.Domain.Entities.Appointment", b =>
                 {
+                    b.HasOne("Clinic.Domain.Entities.ClinicStaff", "AttendingStaff")
+                        .WithMany("ProcessedAppointments")
+                        .HasForeignKey("AttendingStaffId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Clinic.Domain.Entities.Clinic", "Clinic")
                         .WithMany("Appointments")
                         .HasForeignKey("ClinicId")
@@ -453,11 +543,24 @@ namespace Clinic.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("AttendingStaff");
+
                     b.Navigation("Clinic");
 
                     b.Navigation("Patient");
 
                     b.Navigation("TimeSlot");
+                });
+
+            modelBuilder.Entity("Clinic.Domain.Entities.ClinicStaff", b =>
+                {
+                    b.HasOne("Clinic.Domain.Entities.Clinic", "Clinic")
+                        .WithMany("Staff")
+                        .HasForeignKey("ClinicId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Clinic");
                 });
 
             modelBuilder.Entity("Clinic.Domain.Entities.TimeSlot", b =>
@@ -526,7 +629,14 @@ namespace Clinic.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Appointments");
 
+                    b.Navigation("Staff");
+
                     b.Navigation("TimeSlots");
+                });
+
+            modelBuilder.Entity("Clinic.Domain.Entities.ClinicStaff", b =>
+                {
+                    b.Navigation("ProcessedAppointments");
                 });
 
             modelBuilder.Entity("Clinic.Domain.Entities.Patient", b =>

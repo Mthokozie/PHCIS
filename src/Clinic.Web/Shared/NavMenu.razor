@@ -1,21 +1,37 @@
 <MudNavMenu Class="pt-4">
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="/book" Icon="@Icons.Material.Filled.CalendarMonth">Book Appointment</MudNavLink>
-    <MudNavLink Href="/my-appointments" Icon="@Icons.Material.Filled.EventNote">My Appointments</MudNavLink>
-    <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
-    @if (IsAuthenticated)
+    @if (UserRole == "ClinicStaff" || UserRole == "Admin")
     {
-        <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">My Profile & Photo</MudNavLink>
+        <MudNavLink Href="/staff/appointments" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.MedicalServices">Clinic Queue</MudNavLink>
+        @if (UserRole == "Admin")
+        {
+            <MudNavLink Href="/admin/staff" Icon="@Icons.Material.Filled.Badge">Staff Management</MudNavLink>
+        }
+        <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Overview</MudNavLink>
     }
+    else
+    {
+        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
+        <MudNavLink Href="/book" Icon="@Icons.Material.Filled.CalendarMonth">Book Appointment</MudNavLink>
+        <MudNavLink Href="/my-appointments" Icon="@Icons.Material.Filled.EventNote">My Appointments</MudNavLink>
+        <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+        @if (IsAuthenticated)
+        {
+            <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">My Profile & Photo</MudNavLink>
+        }
+    }
+
     <MudDivider Class="my-2" />
     @if (!IsAuthenticated)
     {
         <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">Sign In</MudNavLink>
-        <MudNavLink Href="/register" Icon="@Icons.Material.Filled.PersonAdd">Register</MudNavLink>
+        <MudNavLink Href="/register" Icon="@Icons.Material.Filled.PersonAdd">Register (Patient)</MudNavLink>
     }
 </MudNavMenu>
 
 @code {
     [Parameter]
     public bool IsAuthenticated { get; set; }
+
+    [Parameter]
+    public string? UserRole { get; set; }
 }

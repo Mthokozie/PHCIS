@@ -11,9 +11,9 @@ public class PatientTests
     public void Create_WithValidData_ShouldCreatePatient()
     {
         // Arrange
-        var firstName = "John";
-        var lastName = "Doe";
-        var email = "john.doe@test.com";
+        var firstName = "Ntokozo";
+        var lastName = "Ngwenya";
+        var email = "Ntokozo.Ngwenya@test.com";
         var phone = "+27821234567";
         var dob = new DateTime(1990, 1, 15);
         var idNumber = "9001150123456";
@@ -28,13 +28,13 @@ public class PatientTests
         patient.Email.Should().Be(email);
         patient.PhoneNumber.Should().Be(phone);
         patient.IsActive.Should().BeTrue();
-        patient.FullName.Should().Be("John Doe");
+        patient.FullName.Should().Be("Ntokozo Ngwenya");
     }
 
     [Theory]
-    [InlineData("", "Doe", "john@test.com", "+2782")]
-    [InlineData("John", "", "john@test.com", "+2782")]
-    [InlineData("John", "Doe", "", "+2782")]
+    [InlineData("", "Ngwenya", "Ntokozo@test.com", "+2782")]
+    [InlineData("Ntokozo", "", "Ntokozo@test.com", "+2782")]
+    [InlineData("Ntokozo", "Ngwenya", "", "+2782")]
     public void Create_WithMissingRequiredFields_ShouldThrowDomainException(
         string firstName, string lastName, string email, string phone)
     {
@@ -48,7 +48,7 @@ public class PatientTests
     [Fact]
     public void Deactivate_ShouldSetIsActiveFalse()
     {
-        var patient = Patient.Create("Jane", "Smith", "jane@test.com", "+2783", DateTime.UtcNow.AddYears(-25), "ID456");
+        var patient = Patient.Create("Swazi", "Zulu", "Swazi@test.com", "+2783", DateTime.UtcNow.AddYears(-25), "ID456");
         patient.Deactivate();
         patient.IsActive.Should().BeFalse();
     }
@@ -56,10 +56,10 @@ public class PatientTests
     [Fact]
     public void Update_ShouldUpdateNameAndPhone()
     {
-        var patient = Patient.Create("Jane", "Smith", "jane@test.com", "+2783", DateTime.UtcNow.AddYears(-25), "ID456");
-        patient.Update("Janet", "Jones", "+2789999999");
-        patient.FirstName.Should().Be("Janet");
-        patient.LastName.Should().Be("Jones");
+        var patient = Patient.Create("Swazi", "Zulu", "Swazi@test.com", "+2783", DateTime.UtcNow.AddYears(-25), "ID456");
+        patient.Update("Swazit", "Jobe", "+2789999999");
+        patient.FirstName.Should().Be("Swazit");
+        patient.LastName.Should().Be("Jobe");
         patient.PhoneNumber.Should().Be("+2789999999");
     }
 }

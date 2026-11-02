@@ -3,7 +3,7 @@ namespace Clinic.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 
 /// <summary>
-/// Extended Identity user with optional link to a Patient record.
+/// Extended Identity user with optional link to a Patient or ClinicStaff record.
 /// Supports roles: Patient, ClinicStaff, Admin.
 /// </summary>
 public class ApplicationUser : IdentityUser
@@ -13,6 +13,9 @@ public class ApplicationUser : IdentityUser
 
     /// <summary>Gets or sets the linked patient ID (null if not a patient user).</summary>
     public Guid? PatientId { get; set; }
+
+    /// <summary>Gets or sets the linked clinic staff ID (null if not a staff user).</summary>
+    public Guid? ClinicStaffId { get; set; }
 
     /// <summary>Gets or sets an optional profile image (Data URI or URL).</summary>
     public string? ProfileImageUrl { get; set; }

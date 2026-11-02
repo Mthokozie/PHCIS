@@ -29,6 +29,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<Appointment> Appointments => Set<Appointment>();
 
     /// <inheritdoc/>
+    public DbSet<ClinicStaff> ClinicStaff => Set<ClinicStaff>();
+
+    /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

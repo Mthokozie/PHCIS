@@ -43,7 +43,7 @@ public class BookAppointmentCommandHandlerTests
         var slotId = Guid.NewGuid();
         var clinicId = Guid.NewGuid();
 
-        var patient = Patient.Create("John", "Doe", "john@test.com", "+2782", new DateTime(1990, 1, 1), "ID001");
+        var patient = Patient.Create("Ntokozo", "Ngwenya", "NtokozoNgwenya@test.com", "+27821122003", new DateTime(1985, 5, 11), "ID001");
         var slot = TimeSlot.Create(clinicId, DateTime.Today.AddHours(10), DateTime.Today.AddHours(10).AddMinutes(30), 5);
 
         _mockPatientRepo.Setup(r => r.GetByIdAsync(patientId, default))
@@ -58,7 +58,7 @@ public class BookAppointmentCommandHandlerTests
         var expectedConfirmation = new AppointmentConfirmationDto
         {
             ConfirmationCode = "PHCIS-TESTCODE",
-            PatientName = "John Doe",
+            PatientName = "Ntokozo Ngwenya",
             Message = "Booking confirmed!"
         };
         _mockMapper.Setup(m => m.Map<AppointmentConfirmationDto>(It.IsAny<Appointment>()))
@@ -98,7 +98,8 @@ public class BookAppointmentCommandHandlerTests
         // Arrange
         var patientId = Guid.NewGuid();
         var slotId = Guid.NewGuid();
-        var patient = Patient.Create("John", "Doe", "john@test.com", "+2782", new DateTime(1990, 1, 1), "ID001");
+        var patient = Patient.Create("Ntokozo", "Ngwenya", "NtokozoNgwenya@test.com", "+27821122003", new DateTime(1985, 5, 11), "ID001");
+
 
         var slot = TimeSlot.Create(Guid.NewGuid(), DateTime.Today.AddHours(10), DateTime.Today.AddHours(10).AddMinutes(30), 1);
         slot.Reserve();
@@ -121,7 +122,7 @@ public class BookAppointmentCommandHandlerTests
         // Arrange
         var patientId = Guid.NewGuid();
         var slotId = Guid.NewGuid();
-        var patient = Patient.Create("John", "Doe", "john@test.com", "+2782", new DateTime(1990, 1, 1), "ID001");
+        var patient = Patient.Create("Ntokozo", "Ngwenya", "NtokozoNgwenya@test.com", "+27821122003", new DateTime(1985, 5, 11), "ID001");
         var slot = TimeSlot.Create(Guid.NewGuid(), DateTime.Today.AddHours(10), DateTime.Today.AddHours(10).AddMinutes(30), 5);
 
         _mockPatientRepo.Setup(r => r.GetByIdAsync(patientId, default)).ReturnsAsync(patient);

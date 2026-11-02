@@ -26,81 +26,66 @@ else if (!_isAuthenticated)
 else
 {
     <MudLayout>
-        <MudAppBar Elevation="2" Color="Color.Primary" Dense="false">
+        <MudAppBar Elevation="2" Color="Color.Primary" Dense="false" Fixed="true">
             <MudIconButton Icon="@Icons.Material.Filled.Menu"
                            Color="Color.Inherit"
                            Edge="Edge.Start"
                            OnClick="@ToggleDrawer"
-                            aria-label="Toggle navigation" />
+                           aria-label="Toggle navigation" />
             <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Class="ml-1 mr-2 d-none d-sm-flex" />
             <MudText Typo="Typo.h6" Class="phcis-appbar-title" Style="font-weight:700;">
                 PHCIS Clinic Booking
             </MudText>
             <MudSpacer />
 
-            <!-- Desktop / Tablet Action Buttons -->
-            <div class="d-none d-sm-flex align-center">
+            @if (_userRole == "ClinicStaff" || _userRole == "Admin")
+            {
+                <MudButton Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.MedicalServices"
+                           OnClick="@(() => Navigation.NavigateTo("/staff/appointments"))">
+                    Clinic Queue
+                </MudButton>
+            }
+            else
+            {
                 <MudButton Color="Color.Inherit"
                            StartIcon="@Icons.Material.Filled.EventNote"
                            OnClick="@(() => Navigation.NavigateTo("/my-appointments"))">
                     My Appointments
                 </MudButton>
-            </div>
+            }
 
-            <!-- Mobile Action Icon -->
-            <div class="d-flex d-sm-none align-center">
-                <MudTooltip Text="My Appointments">
-                    <MudIconButton Icon="@Icons.Material.Filled.EventNote"
-                                   Color="Color.Inherit"
-                                   OnClick="@(() => Navigation.NavigateTo("/my-appointments"))" />
+            @if (_userRole == "Patient" || string.IsNullOrEmpty(_userRole))
+            {
+                <MudTooltip Text="Edit My Profile & Photo">
+                    <MudIconButton OnClick="@(() => Navigation.NavigateTo("/profile"))" Class="ml-1">
+                        <MudAvatar Size="Size.Small" Color="Color.Secondary">
+                            @if (!string.IsNullOrEmpty(_patient?.ProfileImageUrl))
+                            {
+                                <MudImage Src="@_patient.ProfileImageUrl" Alt="Profile" Style="width:100%;height:100%;object-fit:cover;" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                            }
+                        </MudAvatar>
+                    </MudIconButton>
                 </MudTooltip>
-            </div>
+            }
 
-            <MudTooltip Text="Edit My Profile & Photo">
-                <MudIconButton OnClick="@(() => Navigation.NavigateTo("/profile"))" Class="ml-1">
-                    <MudAvatar Size="Size.Small" Color="Color.Secondary">
-                        @if (!string.IsNullOrEmpty(_patient?.ProfileImageUrl))
-                        {
-                            <MudImage Src="@_patient.ProfileImageUrl" Alt="Avatar" Style="width:100%;height:100%;object-fit:cover;" />
-                        }
-                        else
-                        {
-                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
-                        }
-                    </MudAvatar>
-                </MudIconButton>
+            <MudTooltip Text="Sign Out">
+                <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                               Color="Color.Inherit"
+                               OnClick="@LogoutAsync"
+                               Class="ml-1" />
             </MudTooltip>
-
-            <!-- Desktop Sign Out Button -->
-            <div class="d-none d-sm-flex">
-                <MudButton Color="Color.Inherit"
-                           Variant="Variant.Outlined"
-                           Class="ml-2"
-                           StartIcon="@Icons.Material.Filled.Logout"
-                           OnClick="LogoutAsync">
-                    Sign Out
-                </MudButton>
-            </div>
-
-            <!-- Mobile Sign Out Icon -->
-            <div class="d-flex d-sm-none">
-                <MudTooltip Text="Sign Out">
-                    <MudIconButton Icon="@Icons.Material.Filled.Logout"
-                                   Color="Color.Inherit"
-                                   OnClick="LogoutAsync" />
-                </MudTooltip>
-            </div>
         </MudAppBar>
 
-        <MudDrawer @bind-Open="_drawerOpen"
-                   Elevation="2"
-                   Variant="DrawerVariant.Responsive"
-                   Breakpoint="Breakpoint.Md"
-                   ClipMode="DrawerClipMode.Always">
-            <NavMenu IsAuthenticated="_isAuthenticated" />
+        <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2" Fixed="true">
+            <NavMenu IsAuthenticated="@_isAuthenticated" UserRole="@_userRole" />
         </MudDrawer>
 
-        <MudMainContent Class="phcis-main-content">
+        <MudMainContent Class="pa-4 phcis-main-content">
             @Body
         </MudMainContent>
     </MudLayout>
@@ -110,6 +95,7 @@ else
     private bool _drawerOpen = true;
     private bool _authChecked;
     private bool _isAuthenticated;
+    private string? _userRole;
     private PatientDto? _patient;
 
     protected override async Task OnInitializedAsync()
@@ -143,6 +129,7 @@ else
         if (!_isAuthenticated)
         {
             _patient = null;
+            _userRole = null;
             if (!IsPublicAuthRoute())
             {
                 Navigation.NavigateTo("/login", replace: true);
@@ -150,7 +137,9 @@ else
             return;
         }
 
-        if (_patient is null)
+        _userRole = await AuthService.GetRoleAsync();
+
+        if (_userRole == "Patient" && _patient is null)
         {
             var patientId = await AuthService.GetPatientIdAsync();
             if (patientId.HasValue && patientId.Value != Guid.Empty)
@@ -167,6 +156,7 @@ else
         await AuthService.LogoutAsync();
         _isAuthenticated = false;
         _patient = null;
+        _userRole = null;
         Navigation.NavigateTo("/login", forceLoad: true);
     }
 
